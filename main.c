@@ -101,7 +101,8 @@ void tokenize(int fd, fileStruct* fileStruct){
 //insert word into wordMap in alphabetical order, uses insertion sort
 void insertWord(char* word, fileStruct* file){
     wordMap* words = file->words;
-    wordMap* prev = words;
+    //wordMap* prev = words;
+    wordMap* prev = NULL;
 
     //First word added
     if(words->word == NULL){
@@ -112,20 +113,36 @@ void insertWord(char* word, fileStruct* file){
         return;
     }
 
-    //check if current word exists in the wordMap
-    while(words != NULL && words->word != NULL){
-        
+    //Iterate through all words in the file
+    while(words != NULL){
         //if word already exists, increment frequency/count
         if(strcmp(words->word,word) == 0){
             words->freq += 1;
             //file->numTokens += 1;
             return;
+        }else if(strcmp(word,words->word) < 0){ //if input word < current word alphabetically
+            wordMap* newWord = malloc(sizeof(wordMap));
+            newWord->word = word;
+            newWord->freq = 1;
+            newWord->next = words;
+
+            //Handle case where newWord becomes the new head
+            if(prev == NULL){
+                //set head of list to newWord
+                file->words = newWord;
+            }else{
+                prev->next = newWord;
+            }
+            return;
         }
+        
+        //if input word > curWord, move onto next word in the file
         prev = words;
-        words = words->next;    
+        words = words->next;  
+         
     }
     
-    //if word does not exist in wordMap, add it
+    //If input word is greater than all words in the list, add to the tail
     if(words == NULL){        
         words= malloc(sizeof(wordMap));
         prev->next = words;
@@ -186,8 +203,8 @@ int main(int argc, char** argv){
     file->words = malloc(sizeof (wordMap));
 
     tokenize(fd,file);
-    file->numTokens = getNumWords(file->fileName,file);
 
+    file->numTokens = getNumWords(file->fileName,file);
     wordMap* words = file->words;
     while(words != NULL){
         
