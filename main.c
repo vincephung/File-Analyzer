@@ -6,36 +6,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <string.h>
-
-//Holds all words in a file with their mappings
-typedef struct wordMap{
-    int freq;
-    char* word;
-    struct wordMap* next;
-} wordMap;
-
-//WFD information about all files
-typedef struct fileStruct{
-    char* fileName;
-    int numTokens; //number of tokens in the file
-    wordMap* words; //the words inside this file
-    struct fileStruct* next;
-} fileStruct;
-
-//struct to hold directory queue
-typedef struct directoryQueue{
-
-} directoryQueue;
-
-//struct to hold file queue
-typedef struct fileQueue{
-
-} fileQueue;
-
-void tokenize(int fd, fileStruct* fileStruct);
-int getFileSize(int fd);
-void insertWord(char* word, fileStruct* fileStruct);
-int getNumWords(char* fileName, fileStruct* fileStruct);
+#include "main.h"
 
 //method to calculate WFD
 
@@ -48,7 +19,7 @@ Given a file descriptor, tokenize the file by
 reading the file and determing what words it contains
 A word is defined by a sequence of characters including: letters,numbers and dash(hypen)
 */
-void tokenize(int fd, fileStruct* fileStruct){
+void tokenize(int fd, fileStruct* file){
     int fileSize = getFileSize(fd);
     char buf[fileSize];
 
@@ -91,7 +62,7 @@ void tokenize(int fd, fileStruct* fileStruct){
             word[wordLength-1] = '\0';
             start = i+1;
             
-            insertWord(word,fileStruct);
+            insertWord(word,file);
             //free(word);
 
         }
@@ -192,8 +163,70 @@ int getFileSize(int fd){
     return (int) data.st_size;
 }
 
+int isFile(char *name) {
+	struct stat data;
+	stat(name, &data);
+	return S_ISREG(data.st_mode);
+}
+
+int isDir(char *name) {
+	struct stat data;
+	stat(name, &data);
+	return S_ISDIR(data.st_mode);
+}
 
 int main(int argc, char** argv){
+
+
+    //Parameters initialized with default values
+    int dirThreads = 1;
+    int fileThreads = 1;
+    int aThreads = 1;
+    char* fileSuffix = ".txt";
+
+    /*
+        Handle arguments, regular and optional
+    */
+    for(int i = 1; i < argc; i++){
+        //handle optional argument
+        if(argv[i][0] == '-'){
+            if(strlen(argv[i])!= 3){
+                perror("Missing or invalid argument");
+                //halt
+            }
+
+            //argument type must be positive number for threads
+            if(argv[i][2] <= 0 && argv[i][1] != 's'){
+                perror("Invalid argument");
+                //halt
+            }
+
+            if(argv[i][1] == 'd'){
+                dirThreads = argv[i][2];
+            }else if(argv[i][1] == 'f'){
+                fileThreads = argv[i][2];
+            }else if(argv[i][1] == 'a'){
+                aThreads = argv[i][2];
+            }else if(argv[i][1] == 's'){
+                if(argv[i][2] == '.'){
+                    fileSuffix = argv[i]; //Need to fix this
+                }
+            }
+        }else{
+            //handle regular arguments (file/directory)
+            if(!isFile(argv[i]) && !isDir(argv[i])){
+                perror(argv[i]);
+            }
+
+            //traverse directories
+            //add files to fileQueue
+            //add directories to directoryQueue
+        }
+
+        
+    }
+
+
 
    int fd = open(argv[1],O_RDONLY);
    fileStruct* file = malloc(sizeof (fileStruct));
@@ -214,7 +247,7 @@ int main(int argc, char** argv){
     int num = getNumWords(argv[1],file);
     printf("%d\n",num);
 
-    return 1;
+    return EXIT_SUCCESS;
 
 //FREE all structs and mallocs
 
