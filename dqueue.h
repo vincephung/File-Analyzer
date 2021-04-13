@@ -1,7 +1,10 @@
+#include "node.h"
+
 typedef struct {
 	int data[QSIZE];
 	unsigned count;
-	unsigned head;
+	struct node* head;
+	struct node* last;
 	unsigned activeThreads;
 	pthread_mutex_t lock;
 	pthread_cond_t read_ready;
