@@ -2,18 +2,18 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
-#include "dstack.h"
+#include "fqueue.h"
 
 int main(int argc, char** argv){
-	dstack stack;
-	init(&stack, 1);
-	push(&stack, "one");
-	push(&stack, "two");
-	char* temp;
-	temp = pop(&stack);
+	fqueue queue;
+	init(&queue, 256);
+	enqueue(&queue, "one");
+	enqueue(&queue, "two");
+	char* temp = dequeue(&queue);
 	printf("%s \n", temp);
 
-	destroy(&stack);
+	destroy(&queue);
+	free(temp);
 
 	return 0;
 }
