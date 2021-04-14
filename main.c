@@ -74,6 +74,7 @@ void tokenize(int fd, fileStruct* file){
             start = i+1;
             
             insertWord(word,file);
+
             //free(word);
 
         }
@@ -199,6 +200,7 @@ int main(int argc, char** argv){
         Handle arguments, regular and optional
     */
     for(int i = 1; i < argc; i++){
+        
         //handle optional argument
         if(argv[i][0] == '-'){
             if(strlen(argv[i])!= 3){
@@ -213,11 +215,11 @@ int main(int argc, char** argv){
             }
 
             if(argv[i][1] == 'd'){
-                dirThreads = argv[i][2];
+                dirThreads = argv[i][2] - '0'; //convert char to integer
             }else if(argv[i][1] == 'f'){
-                fileThreads = argv[i][2];
+                fileThreads = argv[i][2] - '0';
             }else if(argv[i][1] == 'a'){
-                aThreads = argv[i][2];
+                aThreads = argv[i][2] - '0';
             }else if(argv[i][1] == 's'){
                 if(argv[i][2] == '.'){
                     fileSuffix = argv[i]; //Need to fix this
@@ -233,10 +235,12 @@ int main(int argc, char** argv){
             //add files to fileQueue
             //add directories to directoryQueue
         }
-
-        
     }
 
+    //testing input
+    printf("dir threads: %d\n",dirThreads);
+    printf("file threads: %d\n",fileThreads);
+    printf("analysis threads: %d\n",aThreads);
 
 
    int fd = open(argv[1],O_RDONLY);
@@ -250,8 +254,8 @@ int main(int argc, char** argv){
 
     file->numTokens = getNumWords(file->fileName,file);
     wordMap* words = file->words;
+
     while(words != NULL){
-        
         printf("%s\n",words->word);
         words = words->next;
     }
