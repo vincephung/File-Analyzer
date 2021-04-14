@@ -25,18 +25,20 @@ void tokenize(int fd, fileStruct* file){
 
     read(fd,buf,fileSize);
 
-    int start = 0; //beginning of current word
-    int end = 0; //end of current word;
+    int start = 0; //beginning index of current word
+    int end = 0; //end index of current word;
 
     //loop through buffer and get words
     for(int i = 0; i < fileSize; i++){
         char curLetter = buf[i];
         curLetter = tolower(curLetter);
 
+    /*
         //Only tokens allowed are letters, numbers, dash and spaces
         if(!isalpha(curLetter) && (curLetter != '-') && !isspace(curLetter)){
             continue;
         }
+    */
 
         //handle duplicate spaces like hi <space><space> there
         if(isspace(buf[start])){
@@ -50,19 +52,29 @@ void tokenize(int fd, fileStruct* file){
             //i+1 because if file was: "hi there", i would be at "e"
             end = ( i== fileSize-1) ? i+1 : i;
 
-            int wordLength = end - start + 1; //+1 for null term
+            int maxWordLength = end - start + 1; //+1 for null term, could be smaller if the input is contains nonalphanumerical or "-"
 
             //check if malloc fialed
-            char* word = malloc(wordLength);
+            char* word = malloc(maxWordLength);
+            int curWordLength = 0; //length of the current word built.
 
             //Initialize word with letters from buffer
-            for(int j = 0; j < wordLength-1;j++){
-                word[j] = buf[start+j]; 
+            for(int j = 0; j < maxWordLength-1;j++){
+                //Only tokens allowed are letters, numbers, dash and spaces
+                char bufLetter = buf[start+j]; //current letter in the buffer
+                
+                if(!isalpha(bufLetter) && (bufLetter != '-') && !isspace(bufLetter)){   
+                    continue;
+                }
+
+                word[curWordLength] = bufLetter; 
+                curWordLength++;
             }
-            word[wordLength-1] = '\0';
+            word[curWordLength] = '\0';
             start = i+1;
             
             insertWord(word,file);
+
             //free(word);
 
         }
@@ -188,6 +200,7 @@ int main(int argc, char** argv){
         Handle arguments, regular and optional
     */
     for(int i = 1; i < argc; i++){
+        
         //handle optional argument
         if(argv[i][0] == '-'){
             if(strlen(argv[i])!= 3){
@@ -202,11 +215,11 @@ int main(int argc, char** argv){
             }
 
             if(argv[i][1] == 'd'){
-                dirThreads = argv[i][2];
+                dirThreads = argv[i][2] - '0'; //convert char to integer
             }else if(argv[i][1] == 'f'){
-                fileThreads = argv[i][2];
+                fileThreads = argv[i][2] - '0';
             }else if(argv[i][1] == 'a'){
-                aThreads = argv[i][2];
+                aThreads = argv[i][2] - '0';
             }else if(argv[i][1] == 's'){
                 if(argv[i][2] == '.'){
                     fileSuffix = argv[i]; //Need to fix this
@@ -222,10 +235,12 @@ int main(int argc, char** argv){
             //add files to fileQueue
             //add directories to directoryQueue
         }
-
-        
     }
 
+    //testing input
+    printf("dir threads: %d\n",dirThreads);
+    printf("file threads: %d\n",fileThreads);
+    printf("analysis threads: %d\n",aThreads);
 
 
    int fd = open(argv[1],O_RDONLY);
@@ -239,8 +254,8 @@ int main(int argc, char** argv){
 
     file->numTokens = getNumWords(file->fileName,file);
     wordMap* words = file->words;
+
     while(words != NULL){
-        
         printf("%s\n",words->word);
         words = words->next;
     }
