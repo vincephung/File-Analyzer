@@ -25,18 +25,20 @@ void tokenize(int fd, fileStruct* file){
 
     read(fd,buf,fileSize);
 
-    int start = 0; //beginning of current word
-    int end = 0; //end of current word;
+    int start = 0; //beginning index of current word
+    int end = 0; //end index of current word;
 
     //loop through buffer and get words
     for(int i = 0; i < fileSize; i++){
         char curLetter = buf[i];
         curLetter = tolower(curLetter);
 
+    /*
         //Only tokens allowed are letters, numbers, dash and spaces
         if(!isalpha(curLetter) && (curLetter != '-') && !isspace(curLetter)){
             continue;
         }
+    */
 
         //handle duplicate spaces like hi <space><space> there
         if(isspace(buf[start])){
@@ -50,16 +52,25 @@ void tokenize(int fd, fileStruct* file){
             //i+1 because if file was: "hi there", i would be at "e"
             end = ( i== fileSize-1) ? i+1 : i;
 
-            int wordLength = end - start + 1; //+1 for null term
+            int maxWordLength = end - start + 1; //+1 for null term, could be smaller if the input is contains nonalphanumerical or "-"
 
             //check if malloc fialed
-            char* word = malloc(wordLength);
+            char* word = malloc(maxWordLength);
+            int curWordLength = 0; //length of the current word built.
 
             //Initialize word with letters from buffer
-            for(int j = 0; j < wordLength-1;j++){
-                word[j] = buf[start+j]; 
+            for(int j = 0; j < maxWordLength-1;j++){
+                //Only tokens allowed are letters, numbers, dash and spaces
+                char bufLetter = buf[start+j]; //current letter in the buffer
+                
+                if(!isalpha(bufLetter) && (bufLetter != '-') && !isspace(bufLetter)){   
+                    continue;
+                }
+
+                word[curWordLength] = bufLetter; 
+                curWordLength++;
             }
-            word[wordLength-1] = '\0';
+            word[curWordLength] = '\0';
             start = i+1;
             
             insertWord(word,file);
