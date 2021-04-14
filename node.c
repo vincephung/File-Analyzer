@@ -1,13 +1,10 @@
-#include "stdlib.h"
-#include "stdio.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
 #include "node.h"
 
 void initNode(node* temp, char* word){
-	temp->next = null;
-	strncpy(temp->word, word);
-}
-
-void destroyNode(node* temp){
-	free(temp->word);
-	free(temp);
-}
+	temp->next = NULL;
+	strcpy(temp->word, word);
+};
