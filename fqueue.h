@@ -1,4 +1,4 @@
-typedef struct {
+typedef struct fqueue{
 	char** data;
 	unsigned count;
 	unsigned head;
@@ -8,7 +8,7 @@ typedef struct {
 	pthread_cond_t write_ready;
 } fqueue;
 
-int init(fqueue*, unsigned);
-int destroy(fqueue*);
-int enqueue(fqueue*, char*);
-char* dequeue(fqueue*);
+int fInit(fqueue*, unsigned);
+int fDestroy(fqueue*);
+int fEnqueue(fqueue*, char*);
+char* fDequeue(fqueue*);

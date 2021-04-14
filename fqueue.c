@@ -5,7 +5,7 @@
 #include <string.h>
 #include "fqueue.h"
 
-int init(fqueue *Q, unsigned capacity)
+int fInit(fqueue *Q, unsigned capacity)
 {
 	Q->count = 0;
 	Q->head = 0;
@@ -18,7 +18,7 @@ int init(fqueue *Q, unsigned capacity)
 	return 0;
 }
 
-int destroy(fqueue *Q)
+int fDestroy(fqueue *Q)
 {
 	free(Q->data);
 	pthread_mutex_destroy(&Q->lock);
@@ -31,7 +31,7 @@ int destroy(fqueue *Q)
 
 // add item to end of queue
 // if the queue is full, block until space becomes available
-int enqueue(fqueue *Q, char* item)
+int fEnqueue(fqueue *Q, char* item)
 {
 	pthread_mutex_lock(&Q->lock);
 	
@@ -55,7 +55,7 @@ int enqueue(fqueue *Q, char* item)
 }
 
 
-char* dequeue(fqueue *Q)
+char* fDequeue(fqueue *Q)
 {
 	pthread_mutex_lock(&Q->lock);
 	
