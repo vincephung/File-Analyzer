@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <string.h>
+#include <pthread.h>
 #include "main.h"
 
 //method to calculate WFD
@@ -13,6 +14,11 @@
 //method to recursively traverse directory
 
 //method to handle JSD
+
+//file handler
+void* fileHandler(void* args){
+    tokenize(args->fd,args->file);
+}
 
 /*
 Given a file descriptor, tokenize the file by
@@ -194,7 +200,10 @@ int main(int argc, char** argv){
     int dirThreads = 1;
     int fileThreads = 1;
     int aThreads = 1;
-    char* fileSuffix = ".txt";
+    //char* fileSuffix = ".txt";
+    int suffixSize = 4;
+    char* fileSuffix = malloc((suffixSize * sizeof(char)+1)); //size 5 for ".txt" default
+    strcpy(fileSuffix, ".txt");
 
     /*
         Handle arguments, regular and optional
@@ -203,7 +212,7 @@ int main(int argc, char** argv){
         
         //handle optional argument
         if(argv[i][0] == '-'){
-            if(strlen(argv[i])!= 3){
+            if(strlen(argv[i])!= 3 && argv[i][1] != 's'){
                 perror("Missing or invalid argument");
                 //halt
             }
@@ -221,15 +230,57 @@ int main(int argc, char** argv){
             }else if(argv[i][1] == 'a'){
                 aThreads = argv[i][2] - '0';
             }else if(argv[i][1] == 's'){
-                if(argv[i][2] == '.'){
-                    fileSuffix = argv[i]; //Need to fix this
+                //any string after "s" will be the suffix
+                //if it is null, then it is the empty string
+                int wordIndex = 0; //index of the new string
+                char* tempSuffix = malloc(strlen(argv[i])+1);
+                
+                //Get the string from user input, ex. "-stest" puts string "test" into tempSuffix
+                for(int j = 2; j < strlen(argv[i]); j++){
+                    tempSuffix[wordIndex] = argv[i][j];
+                    wordIndex++;
                 }
+                tempSuffix[wordIndex] = '\0';
+
+                //Copy tempSuffix into fileSuffix
+                memset(fileSuffix, '\0', strlen(fileSuffix));
+                for(int j = 0; j < wordIndex; j++){
+                    if(suffixSize == j){
+                        fileSuffix = (char*) realloc(fileSuffix,suffixSize*2);
+                    }
+                    fileSuffix[j] = tempSuffix[j];
+                }
+                free(tempSuffix);                
             }
         }else{
             //handle regular arguments (file/directory)
             if(!isFile(argv[i]) && !isDir(argv[i])){
                 perror(argv[i]);
             }
+
+            //start file threads
+            for(int i = 0; i < fileThreads; i++){
+                int fd = open(argv[i],O_RDONLY);
+                fileStruct* file = malloc(sizeof (fileStruct));
+
+                file->fileName = argv[i];
+                file->numTokens = 0;
+                file->words = malloc(sizeof (wordMap));
+
+                fileArgs* tokenArgs = malloc(sizeof(fileArgs));
+                tokenArgs->fd = fd;
+                tokenArgs->file = file;
+
+                pthread_t tid;
+                int err;
+                err = pthread_create(&tid,NULL,fileHandler,tokenArgs);
+                if(err != 0){
+                   // errno = err;
+                    perror("pthread_create");
+                }
+            }
+
+            //start directory threads
 
             //traverse directories
             //add files to fileQueue
@@ -241,6 +292,7 @@ int main(int argc, char** argv){
     printf("dir threads: %d\n",dirThreads);
     printf("file threads: %d\n",fileThreads);
     printf("analysis threads: %d\n",aThreads);
+    printf("suffix is: %s\n", fileSuffix);
 
 
    int fd = open(argv[1],O_RDONLY);
@@ -249,6 +301,7 @@ int main(int argc, char** argv){
     file->fileName = argv[1];
     file->numTokens = 0;
     file->words = malloc(sizeof (wordMap));
+
 
     tokenize(fd,file);
 
@@ -264,6 +317,7 @@ int main(int argc, char** argv){
 
     return EXIT_SUCCESS;
 
-//FREE all structs and mallocs
+    //FREE all structs and mallocs
+    free(fileSuffix);
 
 }

@@ -13,6 +13,13 @@ typedef struct fileStruct{
     struct fileStruct* next;
 } fileStruct;
 
+//Arguments for file to be passed into tokenize
+typedef struct fileArgs{
+    int fd; //file descriptor
+    struct fileStruct* file; //First file in the WFD struct
+} fileArgs;
+
+
 //struct to hold directory queue
 typedef struct directoryQueue{
 
