@@ -2,11 +2,13 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
-#include "fqueue.h"
+#include "dqueue.h"
 
 int main(int argc, char** argv){
-	fqueue queue;
-	init(&queue, 256);
+	dqueue queue;
+	int thread = 1;
+	int* num = &thread;
+	init(&queue, 1, num);
 	enqueue(&queue, "one");
 	enqueue(&queue, "two");
 	char* temp = dequeue(&queue);
