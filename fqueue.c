@@ -64,10 +64,15 @@ int fEnqueue(fqueue *Q, char* item)
 char* fDequeue(fqueue *Q)
 {
 	pthread_mutex_lock(&Q->lock);
-	
-	while (Q->count == 0) {
-		pthread_cond_wait(&Q->read_ready, &Q->lock);
-	}
+	if(Q->count == 0){
+		while(Q->count == 0 && (*Q->active) > 0){
+			pthread_cond_wait(&Q->read_ready, &Q->lock);
+		}
+		if(Q->count == 0){
+			pthread_mutex_unlock(&Q->lock);
+			return NULL;
+		}
+	}	
 	
 	char* item = malloc((sizeof(Q->data[Q->head])+2)*sizeof(char));
 	strcpy(item, Q->data[Q->head]);

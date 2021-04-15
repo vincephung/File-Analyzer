@@ -2,6 +2,7 @@
 typedef struct wordMap{
     int freq;
     char* word;
+    double wfd;
     struct wordMap* next;
 } wordMap;
 
@@ -13,6 +14,19 @@ typedef struct fileStruct{
     struct fileStruct* next;
 } fileStruct;
 
+//struct to hold file pairs
+typedef struct jsdStruct{
+	struct fileStruct* file1;
+	struct fileStruct* file2;
+	double jsd;
+	int combined;
+} jsdStruct;
+
+//Arguments for file for threads
+typedef struct fileArgs{
+    struct fileStruct* file; //First file in the WFD struct
+} fileArgs;
+
 //Arguments that contain both queues
 typedef struct threadArgs{
     struct dqueue* dirQueue;
@@ -20,6 +34,7 @@ typedef struct threadArgs{
     struct fileStruct* fileHead; //head of all files
     char* suffix;
 } threadArgs;
+
 
 
 void tokenize(fileStruct* fileStruct);
