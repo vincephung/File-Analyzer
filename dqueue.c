@@ -66,30 +66,34 @@ char* dDequeue(dqueue *Q)
 	pthread_mutex_lock(&Q->lock);
 	
 	if(Q->count == 0){
-		(*Q->active)--;
-		if((*Q->active)==0){
+		//(*Q->active)--;
+		--Q->active;
+		//if((*Q->active)==0){
+		if((Q->active)==0){
 			pthread_mutex_unlock(&Q->lock);
 			pthread_cond_signal(&Q->write_ready);
 			pthread_cond_signal(&Q->read_ready);
 			return NULL;
 		}
-		while(Q->count == 0 && (*Q->active) > 0){
+		//while(Q->count == 0 && (*Q->active) > 0){
+		while(Q->count == 0 && (Q->active) > 0){
 			pthread_cond_wait(&Q->read_ready, &Q->lock);
 		}
 		if(Q->count == 0){
 			pthread_mutex_unlock(&Q->lock);
 			return NULL;
 		}
-		(*Q->active)++;
+		//(*Q->active)++;
+		++Q->active;
 	}
 	
 	
-	char* item = malloc(sizeof(Q->data[Q->head]+1)*sizeof(char));
+	char* item = malloc((sizeof(Q->data[Q->head])+2)*sizeof(char));
 	strcpy(item, Q->data[Q->head]);
 	free(Q->data[Q->head]);
 	--Q->count;
 	++Q->head;
-	if (Q->head == 256) Q->head = 0;
+	if (Q->head == Q->capacity) Q->head = 0;
 	
 	pthread_cond_signal(&Q->write_ready);
 	

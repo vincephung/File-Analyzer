@@ -46,8 +46,10 @@ int fEnqueue(fqueue *Q, char* item)
 	unsigned i = Q->head + Q->count;
 	if (i >= Q->capacity) i -= Q->capacity;
 	
-    Q->data[Q->head] = malloc((sizeof item + 2)* sizeof(char));
-	strcpy(Q->data[Q->head], item);
+    //Q->data[Q->head] = malloc((sizeof (item) + 2)* sizeof(char));
+	Q->data[i] = malloc((sizeof (item) + 2)* sizeof(char));
+	//strcpy(Q->data[Q->head], item);
+	strcpy(Q->data[i], item);
 		
 	++Q->count;
 	
@@ -72,12 +74,13 @@ char* fDequeue(fqueue *Q)
 		}
 	}	
 	
-	char* item = malloc(sizeof(Q->data[Q->head]+1)*sizeof(char));
+	char* item = malloc((sizeof(Q->data[Q->head])+2)*sizeof(char));
 	strcpy(item, Q->data[Q->head]);
 	free(Q->data[Q->head]);
 	--Q->count;
 	++Q->head;
-	if (Q->head == 256) Q->head = 0;
+	//if (Q->head == 256) Q->head = 0;
+	if (Q->head == Q->capacity) Q->head = 0;
 	
 	pthread_cond_signal(&Q->write_ready);
 	
