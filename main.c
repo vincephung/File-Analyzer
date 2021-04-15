@@ -25,11 +25,15 @@ Given a file descriptor, tokenize the file by
 reading the file and determing what words it contains
 A word is defined by a sequence of characters including: letters,numbers and dash(hypen)
 */
-void tokenize(fileStruct* file){
+int tokenize(fileStruct* file){
     int fd = open(file->fileName,O_RDONLY);
     int fileSize = getFileSize(fd);
+
     //char buf[fileSize];
     char* buf = malloc(fileSize * sizeof(char));
+
+    int wordCount = 0;
+   // char* buf = malloc(fileSize * sizeof(char));
     read(fd,buf,fileSize);
 
     int start = 0; //beginning index of current word
@@ -74,6 +78,7 @@ void tokenize(fileStruct* file){
             start = i+1;
             
             insertWord(word,file);
+	    wordCount++;
 
             //free(word);
 
@@ -81,6 +86,7 @@ void tokenize(fileStruct* file){
     }
     free(buf);
     close(fd);
+    return wordCount;
 }
 
 //insert word into wordMap in alphabetical order, uses insertion sort
@@ -140,6 +146,15 @@ void insertWord(char* word, fileStruct* file){
         words->next = NULL;
     } 
     //free all words?
+}
+
+//function to initialize wfd field in wordMap struct
+void initWFD(struct wordMap* map, int wordCount){
+	struct wordMap* crnt = map;
+	while(crnt != NULL){
+		crnt->wfd = (crnt->freq)/wordCount;
+		crnt = crnt->next;
+	}
 }
 
 //Return total number of words in a specific file
