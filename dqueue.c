@@ -5,7 +5,7 @@
 #include <string.h>
 #include "dqueue.h"
 
-int init(dqueue *Q, unsigned capacity, int* active)
+int dInit(dqueue *Q, unsigned capacity, int* active)
 {
 	Q->count = 0;
 	Q->head = 0;
@@ -19,7 +19,7 @@ int init(dqueue *Q, unsigned capacity, int* active)
 	return 0;
 }
 
-int destroy(dqueue *Q)
+int dDestroy(dqueue *Q)
 {
 	free(Q->data);
 	pthread_mutex_destroy(&Q->lock);
@@ -32,7 +32,7 @@ int destroy(dqueue *Q)
 
 // add item to end of queue
 // if the queue is full, block until space becomes available
-int enqueue(dqueue *Q, char* item)
+int dEnqueue(dqueue *Q, char* item)
 {
 	pthread_mutex_lock(&Q->lock);
 	
@@ -42,7 +42,7 @@ int enqueue(dqueue *Q, char* item)
 		Q->capacity = Q->capacity * 2;
 	}
 	
-	unsigned i = Q->head + Q->count;
+	//unsigned i = Q->head + Q->count;
 	
         Q->data[Q->head] = malloc((sizeof item + 1)* sizeof(char));
 	strcpy(Q->data[Q->head], item);
@@ -57,7 +57,7 @@ int enqueue(dqueue *Q, char* item)
 }
 
 
-char* dequeue(dqueue *Q)
+char* dDequeue(dqueue *Q)
 {
 	pthread_mutex_lock(&Q->lock);
 	

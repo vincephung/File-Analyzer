@@ -17,20 +17,18 @@
 
 //method to handle JSD
 
-//file handler
-void* fileHandler(void* args){
-    tokenize(args->fd,args->file);
-}
+
 
 /*
 Given a file descriptor, tokenize the file by
 reading the file and determing what words it contains
 A word is defined by a sequence of characters including: letters,numbers and dash(hypen)
 */
-void tokenize(int fd, fileStruct* file){
+void tokenize(fileStruct* file){
+    int fd = open(file->fileName,O_RDONLY);
     int fileSize = getFileSize(fd);
     char buf[fileSize];
-
+   // char* buf = malloc(fileSize * sizeof(char));
     read(fd,buf,fileSize);
 
     int start = 0; //beginning index of current word
@@ -40,13 +38,6 @@ void tokenize(int fd, fileStruct* file){
     for(int i = 0; i < fileSize; i++){
         char curLetter = buf[i];
         curLetter = tolower(curLetter);
-
-    /*
-        //Only tokens allowed are letters, numbers, dash and spaces
-        if(!isalpha(curLetter) && (curLetter != '-') && !isspace(curLetter)){
-            continue;
-        }
-    */
 
         //handle duplicate spaces like hi <space><space> there
         if(isspace(buf[start])){
@@ -87,10 +78,13 @@ void tokenize(int fd, fileStruct* file){
 
         }
     }
+   // free(buf);
+    close(fd);
 }
 
 //insert word into wordMap in alphabetical order, uses insertion sort
 void insertWord(char* word, fileStruct* file){
+    
     wordMap* words = file->words;
     //wordMap* prev = words;
     wordMap* prev = NULL;
@@ -103,7 +97,7 @@ void insertWord(char* word, fileStruct* file){
         words->next = NULL;
         return;
     }
-
+    
     //Iterate through all words in the file
     while(words != NULL){
         //if word already exists, increment frequency/count
@@ -195,10 +189,32 @@ int isDir(char *name) {
 	return S_ISDIR(data.st_mode);
 }
 
-//function for dir threads to use
-void addDir(dqueue* Q){
-	char* dirName = dqueue(Q);
+//file handler
+void* fileHandler(void* args){
 
+    //lock
+    //while loop keeps trying to dequeue from file queue
+
+    //once it gets a file, tokenize it
+    
+    //tokenize(tokenArgs->file);
+
+    //unlock
+}
+
+//directory handler
+void* dirHandler(void* args){
+
+    //while loop keeps trying to dequeue from directory queue
+    //lock
+
+    //needs to "recursively" open all directories and add them to queue
+    //Each none directory entry is added to file queue
+    
+   
+
+    //unlock
+}
 
 int main(int argc, char** argv){
 
@@ -263,41 +279,11 @@ int main(int argc, char** argv){
                 free(tempSuffix);                
             }
         }else{
-            //handle regular arguments (file/directory)
-            if(!isFile(argv[i]) && !isDir(argv[i])){
-                perror(argv[i]);
-            }
-
-            //start file threads
-            for(int i = 0; i < fileThreads; i++){
-                int fd = open(argv[i],O_RDONLY);
-                fileStruct* file = malloc(sizeof (fileStruct));
-
-                file->fileName = argv[i];
-                file->numTokens = 0;
-                file->words = malloc(sizeof (wordMap));
-
-                fileArgs* tokenArgs = malloc(sizeof(fileArgs));
-                tokenArgs->fd = fd;
-                tokenArgs->file = file;
-
-                pthread_t tid;
-                int err;
-                err = pthread_create(&tid,NULL,fileHandler,tokenArgs);
-                if(err != 0){
-                   // errno = err;
-                    perror("pthread_create");
-                }
-            }
-
-            //start directory threads
-
-            //traverse directories
-            //add files to fileQueue
-            //add directories to directoryQueue
+            //only get optional arguments at first
+            continue;
         }
     }
-
+    
     //testing input
     printf("dir threads: %d\n",dirThreads);
     printf("file threads: %d\n",fileThreads);
@@ -305,15 +291,71 @@ int main(int argc, char** argv){
     printf("suffix is: %s\n", fileSuffix);
 
 
-   int fd = open(argv[1],O_RDONLY);
+    //create and initialize queues
+
+    dqueue* dirQueue = malloc(sizeof(dqueue));
+    fqueue* fileQueue = malloc(sizeof(fqueue));
+
+    dInit(dirQueue,dirThreads,0);
+    fInit(fileQueue,fileThreads);
+
+/*
+    dDestroy(dirQueue);
+    fDestroy(fQueue);
+    free(dirQueue);
+    free(fileQueue);
+*/
+    //start file threads
+    pthread_t fTids[fileThreads]; //hold thread ids
+
+ /*  
+    for(int i = 0; i < fileThreads; i++){
+        int err;
+        err = pthread_create(&fTids[i],NULL,fileHandler,NULL);
+        if(err != 0){
+            // errno = err;
+            perror("pthread_create");
+        }
+    }
+    */
+
+/*
+    //start directory threads
+    pthread_t dTids[dirThreads]; //hold thread ids
+    for(int i = 0; i < dirThreads; i++){
+        int err;
+        err = pthread_create(&dTids[i],NULL,dirHandler,NULL);
+        if(err != 0){
+            // errno = err;
+            perror("pthread_create");
+        }
+    }
+    */
+
+        //join threads?
+        //pthread_join
+
+
+    //enqueue file and directory queues
+    for(int i = 0; i < argc; i++){
+        if(isFile(argv[i])){
+            fEnqueue(fileQueue,argv[i]);
+        }else if(isDir(argv[i])){
+            dEnqueue(dirQueue,argv[i]);
+        }
+    }
+
+
+    /*** Testing section, 
+    //BELOW this is just testing tokenize
+    ***/ 
    fileStruct* file = malloc(sizeof (fileStruct));
       //need to get filepath to name the file , maybe get this with dir
     file->fileName = argv[1];
     file->numTokens = 0;
     file->words = malloc(sizeof (wordMap));
 
-
-    tokenize(fd,file);
+    tokenize(file);
 
     file->numTokens = getNumWords(file->fileName,file);
     wordMap* words = file->words;
@@ -329,5 +371,18 @@ int main(int argc, char** argv){
 
     //FREE all structs and mallocs
     free(fileSuffix);
+    
+    fileStruct* filePtr = file;
+    wordMap* wordPtr = file->words; 
+    while(filePtr != NULL){
+        while(wordPtr != NULL){
+            wordMap* tempWord = wordPtr;
+            wordPtr = wordPtr->next;
+            free(tempWord);
+        }
+        fileStruct* tempFile = filePtr;
+        filePtr = filePtr->next;
+        free(tempFile);
+    }
 
 }
