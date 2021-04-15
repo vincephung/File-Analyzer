@@ -8,6 +8,8 @@
 #include <string.h>
 #include <pthread.h>
 #include "main.h"
+#include "dqueue.h"
+#include "fqueue.h"
 
 //method to calculate WFD
 
@@ -193,6 +195,11 @@ int isDir(char *name) {
 	return S_ISDIR(data.st_mode);
 }
 
+//function for dir threads to use
+void addDir(dqueue* Q){
+	char* dirName = dqueue(Q);
+
+
 int main(int argc, char** argv){
 
 
@@ -204,6 +211,9 @@ int main(int argc, char** argv){
     int suffixSize = 4;
     char* fileSuffix = malloc((suffixSize * sizeof(char)+1)); //size 5 for ".txt" default
     strcpy(fileSuffix, ".txt");
+
+    //initialize queues
+
 
     /*
         Handle arguments, regular and optional
