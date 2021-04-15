@@ -14,7 +14,6 @@ int dInit(dqueue *Q, unsigned capacity, int active)
 	Q->capacity = capacity;
 	pthread_mutex_init(&Q->lock, NULL);
 	pthread_cond_init(&Q->read_ready, NULL);
-	pthread_cond_init(&Q->write_ready, NULL);
 	
 	return 0;
 }
@@ -28,11 +27,9 @@ int dDestroy(dqueue *Q)
 	free(Q->data);
 	pthread_mutex_destroy(&Q->lock);
 	pthread_cond_destroy(&Q->read_ready);
-	pthread_cond_destroy(&Q->write_ready);
 
 	return 0;
 }
-
 
 // add item to end of queue
 // if the queue is full, block until space becomes available
@@ -46,10 +43,11 @@ int dEnqueue(dqueue *Q, char* item)
 		Q->capacity = Q->capacity * 2;
 	}
 	
-	//unsigned i = Q->head + Q->count;
+	unsigned i = Q->head + Q->count;
+	if (i >= Q->capacity) i -= Q->capacity;
 	
-	Q->data[Q->head] = malloc((sizeof item + 2)* sizeof(char));
-	strcpy(Q->data[Q->head], item);
+	Q->data[i] = malloc((strlen(item) + 2)* sizeof(char));
+	strcpy(Q->data[i], item);
 		
 	++Q->count;
 	
@@ -64,40 +62,38 @@ int dEnqueue(dqueue *Q, char* item)
 char* dDequeue(dqueue *Q)
 {
 	pthread_mutex_lock(&Q->lock);
-	
 	if(Q->count == 0){
-		//(*Q->active)--;
 		--Q->active;
-		//if((*Q->active)==0){
 		if((Q->active)==0){
+			
+			//close file queue
 			pthread_mutex_unlock(&Q->lock);
-			pthread_cond_signal(&Q->write_ready);
-			pthread_cond_signal(&Q->read_ready);
+			pthread_cond_broadcast(&Q->read_ready);
+
 			return NULL;
 		}
-		//while(Q->count == 0 && (*Q->active) > 0){
 		while(Q->count == 0 && (Q->active) > 0){
+			printf("active is : %d\n",Q->active);
 			pthread_cond_wait(&Q->read_ready, &Q->lock);
 		}
+		
 		if(Q->count == 0){
 			pthread_mutex_unlock(&Q->lock);
 			return NULL;
 		}
-		//(*Q->active)++;
 		++Q->active;
 	}
 	
-	
-	char* item = malloc((sizeof(Q->data[Q->head])+2)*sizeof(char));
+	char* item = malloc((strlen(Q->data[Q->head])+2)*sizeof(char));
 	strcpy(item, Q->data[Q->head]);
 	free(Q->data[Q->head]);
 	--Q->count;
 	++Q->head;
-	if (Q->head == Q->capacity) Q->head = 0;
 	
-	pthread_cond_signal(&Q->write_ready);
+	if (Q->head == Q->capacity) Q->head = 0;
 	
 	pthread_mutex_unlock(&Q->lock);
 	
 	return item;
 }
+

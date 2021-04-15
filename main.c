@@ -267,7 +267,7 @@ void* fileHandler(void* args){
 
         //Need to lock when appending to shared linked list of files
         pthread_mutex_lock(&tArgs->lock);
-        
+
         //get tail of file list
         fileStruct* file = fileHead;
         fileStruct* prev = NULL;
@@ -292,14 +292,11 @@ void* fileHandler(void* args){
 
         //tokenize words in the file
         tokenize(file);
-//        file->numTokens = getNumWords(file->fileName,file);
-        //file->numTokens = getNumWords(fileName,file);
-    
+
         printf("filename: %s num tokens: %d\n",file->fileName, file->numTokens);
         
         free(fileName);
-    }
-    while(fileQueue->count != 0 || dirQueue->active != 0);
+    }while(fileQueue->count != 0 || dirQueue->active != 0);
 
     return 0;
 }
@@ -310,63 +307,75 @@ void* dirHandler(void* args){
     //while loop keeps trying to dequeue from directory queue
     //lock
 
-    //needs to "recursively" open all directories and add them to queue
-    //Each none directory entry is added to file queue
     threadArgs* tArgs = (threadArgs*)args;
-    //fqueue* fileQueue = tArgs->fileQueue;
+    fqueue* fileQueue = tArgs->fileQueue;
     dqueue* dirQueue = tArgs->dirQueue;
-  //  char* suffix = tArgs->suffix;
+    char* suffix = tArgs->suffix;
 
-    char* dirName = dDequeue(dirQueue);
-/*
-    while(dirQueue->count == 0 || dirQueue->active != 0){
+    //char* dirName = dDequeue(dirQueue);
+
+    while(dirQueue->count != 0 || dirQueue->active != 0){
         char* dirName = dDequeue(dirQueue);
-        DIR *dirp = opendir(dirName);
-        struct dirent *de;
 
-    
+        //empty queue?
+        if(dirName == NULL){
+            return NULL;
+        }
+
+        DIR *dirp = opendir(dirName);
+        if(!dirp){
+            //handle directory error
+            perror(dirName);
+            //EXIT_FAILURE =;
+            closedir(dirp);
+            continue;
+        }
+
         //Concat path everytime you go inside a new directory
         char* parentPath = malloc(strlen(dirName) +2);
-        char* newPath = malloc(strlen(parentPath) + strlen(de->d_name));
         strcpy(parentPath,dirName);
         strcat(parentPath,"/");
-        strcpy(newPath,parentPath);
-        strcat(newPath,de->d_name);
 
-        memset(parentPath,'\0',sizeof(parentPath));
-        parentPath = realloc(parentPath,newPath);
-        strcpy(parentPath,newPath);
-        memset(newPath,'\0',strlen(newPath));
-
-        //free(parentPath);
-        //free(newPath);
-    
+        struct dirent *de;
         while((de = readdir(dirp))){
             //ignore entries whose name begins with a period
             if(de->d_name[0] == '.'){
                 continue; 
             }
-            printf("%s\n",de->d_name);
+            //printf("%s\n",de->d_name);
+            char* newPath = malloc(strlen(parentPath) + strlen(de->d_name) +1);
+            strcpy(newPath,parentPath);
+            strcat(newPath,de->d_name);
 
-              
             if(de->d_type == DT_DIR){
-                dEnqueue(dirQueue,de->d_name);
+                //enqueue subdirectory
+                char* newDir = malloc(strlen(newPath)+1);
+                strcpy(newDir,newPath);
+                dEnqueue(dirQueue,newDir);
+                free(newDir);
             }else if(de->d_type == DT_REG){
                 //compare suffix
-                
-                for(int i = 0; i < strlen(suffix);i++){
-                    if(suffix[i] != de->d_name[i]){
-                        break;
-                    }else{
-                        fEnqueue(fileQueue,de->d_name);
-                    }
+                int pathLength = strlen(newPath);
+                int suffixLen = strlen(suffix);
+                 //start of string to compare to
+                int startLen = pathLength - suffixLen;
+
+                //if suffix matches, enqueue
+                if(strncmp(newPath+startLen,suffix,suffixLen)==0){
+                    //enqueue file
+                    char* newFile = malloc(strlen(newPath)+1);
+                    strcpy(newFile,newPath);
+                    fEnqueue(fileQueue,newFile);
+                    free(newFile);
                 }
             }
-            
+            free(newPath);
         }
+        free(parentPath);
+        free(dirName);
         closedir(dirp);
     }
-*/    
+    
 
     //unlock
     return 0;
@@ -467,7 +476,8 @@ int main(int argc, char** argv){
     fqueue* fileQueue = malloc(sizeof(fqueue));
 
    // dInit(dirQueue,dirThreads,0);
-    dInit(dirQueue,dirThreads,dirThreads);
+   //Consider "main" as a directory thread because it is adding from the argument list.
+    dInit(dirQueue,dirThreads,dirThreads+1);
     fInit(fileQueue,fileThreads);
 
      //struct that contains both queues
@@ -493,7 +503,8 @@ int main(int argc, char** argv){
             perror("pthread_create");
         }
     }
-    
+
+   
     //start directory threads
     //pthread_t dTids[dirThreads]; //hold thread 
     pthread_t* dTids = malloc(sizeof(pthread_t) * dirThreads);
@@ -516,13 +527,21 @@ int main(int argc, char** argv){
         }
     }
 
+    //Once main thread adds all argument directories, remove it from the active thread list
+    dirQueue->active--;
+
+    //printf("decrement active is : %d\n",dirQueue->active);
+
     //join directory threads
     for(int i = 0; i < dirThreads; i++){
-        pthread_join(dTids[i],NULL);
+        pthread_join(dTids[i],NULL);        
     }
 
     //if directory threads are done, file queue can close?
-    fClose(fileQueue);
+    if(dirQueue->active == 0){
+        fClose(fileQueue);
+    }
+    
 
     //join file threads
     for(int i = 0; i < fileThreads;i++){

@@ -47,9 +47,7 @@ int fEnqueue(fqueue *Q, char* item)
 	unsigned i = Q->head + Q->count;
 	if (i >= Q->capacity) i -= Q->capacity;
 	
-    //Q->data[Q->head] = malloc((sizeof (item) + 2)* sizeof(char));
-	Q->data[i] = malloc((sizeof (item) + 2)* sizeof(char));
-	//strcpy(Q->data[Q->head], item);
+	Q->data[i] = malloc((strlen(item) + 2)* sizeof(char));
 	strcpy(Q->data[i], item);
 		
 	++Q->count;
@@ -80,7 +78,7 @@ char* fDequeue(fqueue *Q)
 		return NULL;
 	}
 	
-	char* item = malloc((sizeof(Q->data[Q->head])+2)*sizeof(char));
+	char* item = malloc((strlen(Q->data[Q->head])+2)*sizeof(char));
 	strcpy(item, Q->data[Q->head]);
 	free(Q->data[Q->head]);
 	--Q->count;
