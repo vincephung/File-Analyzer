@@ -11,6 +11,7 @@ int fInit(fqueue *Q, unsigned capacity)
 	Q->head = 0;
 	Q->data = malloc(sizeof(char*)*capacity);
 	Q->capacity = capacity;
+	Q->active = 1;
 	pthread_mutex_init(&Q->lock, NULL);
 	pthread_cond_init(&Q->read_ready, NULL);
 	pthread_cond_init(&Q->write_ready, NULL);
@@ -64,7 +65,8 @@ int fEnqueue(fqueue *Q, char* item)
 char* fDequeue(fqueue *Q)
 {
 	pthread_mutex_lock(&Q->lock);
-	if(Q->count == 0){
+	
+	/*if(Q->count == 0){
 		while(Q->count == 0 && (*Q->active) > 0){
 			pthread_cond_wait(&Q->read_ready, &Q->lock);
 		}
@@ -73,6 +75,10 @@ char* fDequeue(fqueue *Q)
 			return NULL;
 		}
 	}	
+	*/
+	while (Q->count == 0) {
+		pthread_cond_wait(&Q->read_ready, &Q->lock);
+	}
 	
 	char* item = malloc((sizeof(Q->data[Q->head])+2)*sizeof(char));
 	strcpy(item, Q->data[Q->head]);
