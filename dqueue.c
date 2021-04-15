@@ -5,7 +5,7 @@
 #include <string.h>
 #include "dqueue.h"
 
-int dInit(dqueue *Q, unsigned capacity, int* active)
+int dInit(dqueue *Q, unsigned capacity, int active)
 {
 	Q->count = 0;
 	Q->head = 0;

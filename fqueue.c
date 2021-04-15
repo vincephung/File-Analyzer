@@ -56,7 +56,7 @@ int fEnqueue(fqueue *Q, char* item)
 	pthread_cond_signal(&Q->read_ready);
 	
 	pthread_mutex_unlock(&Q->lock);
-	
+
 	return 0;
 }
 
