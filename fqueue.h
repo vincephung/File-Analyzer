@@ -3,7 +3,7 @@ typedef struct fqueue{
 	unsigned count;
 	unsigned head;
 	unsigned capacity;
-	int active;
+	int open;
 	pthread_mutex_t lock;
 	pthread_cond_t read_ready;
 	pthread_cond_t write_ready;
@@ -13,3 +13,4 @@ int fInit(fqueue*, unsigned);
 int fDestroy(fqueue*);
 int fEnqueue(fqueue*, char*);
 char* fDequeue(fqueue*);
+void fClose(fqueue *Q);
