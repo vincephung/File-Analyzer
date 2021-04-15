@@ -28,8 +28,8 @@ A word is defined by a sequence of characters including: letters,numbers and das
 void tokenize(fileStruct* file){
     int fd = open(file->fileName,O_RDONLY);
     int fileSize = getFileSize(fd);
-    char buf[fileSize];
-   // char* buf = malloc(fileSize * sizeof(char));
+    //char buf[fileSize];
+    char* buf = malloc(fileSize * sizeof(char));
     read(fd,buf,fileSize);
 
     int start = 0; //beginning index of current word
@@ -79,7 +79,7 @@ void tokenize(fileStruct* file){
 
         }
     }
-   // free(buf);
+    free(buf);
     close(fd);
 }
 
@@ -89,13 +89,15 @@ void insertWord(char* word, fileStruct* file){
     wordMap* words = file->words;
     //wordMap* prev = words;
     wordMap* prev = NULL;
+    //file->numTokens += 1;
 
     //First word added
     if(words->word == NULL){
         words->word = word;
         words->freq = 1;
-        //file->numTokens += 1;
         words->next = NULL;
+        
+        //file->numTokens += 1;
         return;
     }
     
@@ -104,10 +106,11 @@ void insertWord(char* word, fileStruct* file){
         //if word already exists, increment frequency/count
         if(strcmp(words->word,word) == 0){
             words->freq += 1;
+            
             //file->numTokens += 1;
             return;
         }else if(strcmp(word,words->word) < 0){ //if input word < current word alphabetically
-            wordMap* newWord = malloc(sizeof(wordMap));
+            wordMap* newWord = malloc(sizeof(wordMap)); //create a new word
             newWord->word = word;
             newWord->freq = 1;
             newWord->next = words;
@@ -166,7 +169,9 @@ int getNumWords(char* fileName, fileStruct* file){
 
 }
 
-/*calculates the JSD for a specified portion of the WFD*/
+/*
+
+//calculates the JSD for a specified portion of the WFD//
 void* analysisPhase(struct jsdStruct** array, int start, int end){
 	//iterate through array
 	for(int i=start; i<end; i++){
@@ -185,9 +190,12 @@ void* analysisPhase(struct jsdStruct** array, int start, int end){
 				//add to running total
 				kld += (kld1 + kld2);
 				//increment same word copuio
-				
+            }
+        }
+    }
 }
 
+*/
 
 
 int getFileSize(int fd){
@@ -226,9 +234,11 @@ void* fileHandler(void* args){
     //might be && not ||
     //while(fileQueue->count != 0 || dirQueue->active != 0){
     
-    while(fileQueue->count == 0 || dirQueue->active != 0){
+    do{
         char* fileName = fDequeue(fileQueue);
 
+        //Need to lock when appending to shared linked list of files
+        pthread_mutex_lock(&tArgs->lock);
         //get tail of file list
         fileStruct* file = fileHead;
         fileStruct* prev = NULL;
@@ -244,15 +254,22 @@ void* fileHandler(void* args){
         prev->next = file;
 
         file->fileName = fileName;
+        file->numTokens = 0;
         file->next = NULL;
         file->words = malloc(sizeof (wordMap));
         file->words->word = NULL; //initialize word
 
+        pthread_mutex_unlock(&tArgs->lock);
+
         //tokenize words in the file
         tokenize(file);
-        file->numTokens = getNumWords(file->fileName,file);
+//        file->numTokens = getNumWords(file->fileName,file);
+        //file->numTokens = getNumWords(fileName,file);
+    
+        printf("filename: %s num tokens: %d\n",file->fileName, file->numTokens);
+        
         free(fileName);
-    }
+    }while(fileQueue->count != 0 || dirQueue->active != 0);
 
     return 0;
 }
@@ -266,9 +283,9 @@ void* dirHandler(void* args){
     //needs to "recursively" open all directories and add them to queue
     //Each none directory entry is added to file queue
     threadArgs* tArgs = (threadArgs*)args;
-    fqueue* fileQueue = tArgs->fileQueue;
+    //fqueue* fileQueue = tArgs->fileQueue;
     dqueue* dirQueue = tArgs->dirQueue;
-    char* suffix = tArgs->suffix;
+  //  char* suffix = tArgs->suffix;
 
     char* dirName = dDequeue(dirQueue);
 /*
@@ -277,7 +294,7 @@ void* dirHandler(void* args){
         DIR *dirp = opendir(dirName);
         struct dirent *de;
 
-    /*
+    
         //Concat path everytime you go inside a new directory
         char* parentPath = malloc(strlen(dirName) +2);
         char* newPath = malloc(strlen(parentPath) + strlen(de->d_name));
@@ -301,7 +318,7 @@ void* dirHandler(void* args){
             }
             printf("%s\n",de->d_name);
 
-    /*            
+              
             if(de->d_type == DT_DIR){
                 dEnqueue(dirQueue,de->d_name);
             }else if(de->d_type == DT_REG){
@@ -325,6 +342,7 @@ void* dirHandler(void* args){
     return 0;
 }
 
+/*
 //init jsd struct array with all file pairs
 void initPairs(fileStruct* f, struct jsdStruct** array){
 	struct fileStruct* crnt = f;
@@ -335,8 +353,9 @@ void initPairs(fileStruct* f, struct jsdStruct** array){
 			//create jsd struct
 			struct jsdStruct* newStruct = malloc(sizeof(jsdStruct));
 			newStruct->file1 = crnt;
-			newStruct->file2 = temp;
-			newStruct->count = 0;
+			newStruct->file2 = tmp;
+			//newStruct->count = 0;
+            newStruct->combined = 0;
 			newStruct->jsd = 0;
 			array[count] = newStruct;
 			count++;
@@ -345,6 +364,7 @@ void initPairs(fileStruct* f, struct jsdStruct** array){
 		crnt = crnt->next;
 	}
 }
+*/
 
 int main(int argc, char** argv){
     //Parameters initialized with default values
@@ -425,13 +445,16 @@ int main(int argc, char** argv){
     tArgs->dirQueue = dirQueue;
     tArgs->fileQueue = fileQueue;
     tArgs->suffix = fileSuffix;
+    pthread_mutex_init(&tArgs->lock, NULL);
+
     //Creates the head of the fileStruct (dummyHead) set to null
     fileStruct* fileHead = malloc(sizeof(fileStruct));
     fileHead->next = NULL;
     tArgs->fileHead = fileHead;
 
     //start file threads
-    pthread_t fTids[fileThreads]; //hold thread ids
+    // fTids[fileThreads]; //hold thread ids
+    pthread_t* fTids = malloc(sizeof(pthread_t) * fileThreads);
     for(int i = 0; i < fileThreads; i++){
         int err;
         err = pthread_create(&fTids[i],NULL,fileHandler,(void*)tArgs);
@@ -442,7 +465,9 @@ int main(int argc, char** argv){
     }
     
     //start directory threads
-    pthread_t dTids[dirThreads]; //hold thread ids
+    //pthread_t dTids[dirThreads]; //hold thread 
+    pthread_t* dTids = malloc(sizeof(pthread_t) * dirThreads);
+
     for(int i = 0; i < dirThreads; i++){
         int err;
         err = pthread_create(&dTids[i],NULL,dirHandler,(void*)tArgs);
@@ -507,6 +532,8 @@ int main(int argc, char** argv){
     }
 
     //free thread arguments
+    free(fTids);
+    free(dTids);
     free(fileHead);
     free(tArgs);
 

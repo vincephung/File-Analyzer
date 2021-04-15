@@ -32,6 +32,7 @@ typedef struct threadArgs{
     struct dqueue* dirQueue;
     struct fqueue* fileQueue;
     struct fileStruct* fileHead; //head of all files
+    pthread_mutex_t lock;
     char* suffix;
 } threadArgs;
 
