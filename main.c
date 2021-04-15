@@ -8,8 +8,8 @@
 #include <string.h>
 #include <pthread.h>
 #include "main.h"
-#include "fqueue.h"
 #include "dqueue.h"
+#include "fqueue.h"
 
 //method to calculate WFD
 
@@ -229,6 +229,9 @@ int main(int argc, char** argv){
     int suffixSize = 4;
     char* fileSuffix = malloc((suffixSize * sizeof(char)+1)); //size 5 for ".txt" default
     strcpy(fileSuffix, ".txt");
+
+    //initialize queues
+
 
     /*
         Handle arguments, regular and optional
