@@ -18,7 +18,7 @@
 //method to handle JSD
 
 
-
+//add running word count to method and return
 /*
 Given a file descriptor, tokenize the file by
 reading the file and determing what words it contains
@@ -165,6 +165,30 @@ int getNumWords(char* fileName, fileStruct* file){
 
 }
 
+/*calculates the JSD for a specified portion of the WFD*/
+void* analysisPhase(struct jsdStruct** array, int start, int end){
+	//iterate through array
+	for(int i=start; i<end; i++){
+		double kld = 0;
+		struct jsdStruct* crntStruct = array[i];
+		struct wordMap* word1 = crntStruct->file1->words;
+		struct wordMap* word2 = crntStruct->file2->words;
+		while(word1 != NULL || word2 != NULL){
+			//compare words to see if same
+			if(compare(word1->word, word2->word) == 0){
+				//compute mean
+				double mean = .5 * (word1->wfd + word2->wfd);
+				//compute kld for each file
+				double kld1 = kld(word1->wfd, mean);
+				double kld2 = kld(word2->wfd, mean);
+				//add to running total
+				kld += (kld1 + kld2);
+				//increment same word copuio
+				
+}
+
+
+
 int getFileSize(int fd){
     struct stat data;
     int err = fstat(fd,&data);
@@ -216,6 +240,27 @@ void* dirHandler(void* args){
 
     //unlock
     return 0;
+}
+
+//init jsd struct array with all file pairs
+void initPairs(fileStruct* f, struct jsdStruct** array){
+	struct fileStruct* crnt = f;
+	int count = 0;
+	while(crnt != NULL){
+		struct fileStruct* tmp = crnt->next;
+		while(tmp != NULL){
+			//create jsd struct
+			struct jsdStruct* newStruct = malloc(sizeof(jsdStruct));
+			newStruct->file1 = crnt;
+			newStruct->file2 = temp;
+			newStruct->count = 0;
+			newStruct->jsd = 0;
+			array[count] = newStruct;
+			count++;
+			tmp = tmp->next;
+		}
+		crnt = crnt->next;
+	}
 }
 
 int main(int argc, char** argv){

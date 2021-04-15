@@ -2,6 +2,7 @@
 typedef struct wordMap{
     int freq;
     char* word;
+    double wfd;
     struct wordMap* next;
 } wordMap;
 
@@ -12,6 +13,14 @@ typedef struct fileStruct{
     wordMap* words; //the words inside this file
     struct fileStruct* next;
 } fileStruct;
+
+//struct to hold file pairs
+typedef struct jsdStruct{
+	struct fileStruct* file1;
+	struct fileStruct* file2;
+	double jsd;
+	int combined;
+} jsdStruct;
 
 //Arguments for file for threads
 typedef struct fileArgs{
