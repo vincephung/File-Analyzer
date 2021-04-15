@@ -13,10 +13,12 @@ typedef struct fileStruct{
     struct fileStruct* next;
 } fileStruct;
 
-//Arguments for file for threads
-typedef struct fileArgs{
-    struct fileStruct* file; //First file in the WFD struct
-} fileArgs;
+//Arguments that contain both queues
+typedef struct threadArgs{
+    struct dqueue* dirQueue;
+    struct fqueue* fileQueue;
+    struct fileStruct* fileHead; //head of all files
+} threadArgs;
 
 
 void tokenize(fileStruct* fileStruct);

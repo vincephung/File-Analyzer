@@ -84,7 +84,7 @@ char* dDequeue(dqueue *Q)
 	}
 	
 	
-	char* item = malloc(sizeof(Q->data[Q->head]+1)*sizeof(char));
+	char* item = malloc((sizeof(Q->data[Q->head])+2)*sizeof(char));
 	strcpy(item, Q->data[Q->head]);
 	free(Q->data[Q->head]);
 	--Q->count;

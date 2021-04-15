@@ -194,12 +194,47 @@ void* fileHandler(void* args){
 
     //lock
     //while loop keeps trying to dequeue from file queue
+    threadArgs* tArgs = (threadArgs*)args;
+    fqueue* fileQueue = tArgs->fileQueue;
+    dqueue* dirQueue = tArgs->dirQueue;
+    fileStruct* fileHead = tArgs->fileHead;
 
-    //once it gets a file, tokenize it
+    //repeat until the queue is empty and the directory threads have stopped
+    //might be && not ||
+    //while(fileQueue->count != 0 || dirQueue->active != 0){
+    while(fileQueue->count == 0){
+        char* fileName = fDequeue(fileQueue);
+        //once it gets a file, tokenize it
+        
+        //get tail of file list
+        fileStruct* file = fileHead;
+        fileStruct* prev = NULL;
+        while(file != NULL){
+            prev = file;
+            file = file->next;
+        }
+
+        //create new fileStruct 
+        file = malloc(sizeof (fileStruct));
+        
+        //append new file it to the list
+        prev->next = file;
+
+        file->fileName = fileName;
+        file->next = NULL;
+        file->words = malloc(sizeof (wordMap));
+        file->words->word = NULL; //initialize word
+
+        tokenize(file);
+
+        file->numTokens = getNumWords(file->fileName,file);
     
-    //tokenize(tokenArgs->file);
+        free(fileName);
+    }
 
+    //tokenize(tokenArgs->file);
     //unlock
+    //free(fileName);
     return 0;
 }
 
@@ -300,11 +335,20 @@ int main(int argc, char** argv){
     dInit(dirQueue,dirThreads,0);
     fInit(fileQueue,fileThreads);
 
+     //struct that contains both queues
+    threadArgs* tArgs = malloc(sizeof (threadArgs));
+    tArgs->dirQueue = dirQueue;
+    tArgs->fileQueue = fileQueue;
+    //Creates the head of the fileStruct (dummyHead) set to null
+    fileStruct* fileHead = malloc(sizeof(fileStruct));
+    fileHead->next = NULL;
+    tArgs->fileHead = fileHead;
+
     //start file threads
     pthread_t fTids[fileThreads]; //hold thread ids
     for(int i = 0; i < fileThreads; i++){
         int err;
-        err = pthread_create(&fTids[i],NULL,fileHandler,NULL);
+        err = pthread_create(&fTids[i],NULL,fileHandler,(void*)tArgs);
         if(err != 0){
             // errno = err;
             perror("pthread_create");
@@ -317,7 +361,7 @@ int main(int argc, char** argv){
     pthread_t dTids[dirThreads]; //hold thread ids
     for(int i = 0; i < dirThreads; i++){
         int err;
-        err = pthread_create(&dTids[i],NULL,dirHandler,NULL);
+        err = pthread_create(&dTids[i],NULL,dirHandler,(void*)dirQueue);
         if(err != 0){
             // errno = err;
             perror("pthread_create");
@@ -327,7 +371,6 @@ int main(int argc, char** argv){
 
         //join threads?
         //pthread_join
-
 
     //enqueue file and directory queues
     for(int i = 1; i < argc; i++){
@@ -354,10 +397,43 @@ int main(int argc, char** argv){
     fDestroy(fileQueue);
     free(dirQueue);
     free(fileQueue);
+    
+/*
+    //test printing output
+    fileStruct* filePrint = fileHead->next;
+    while(filePrint!=NULL){
+        wordMap* words = filePrint->words;
+        while(words != NULL){
+            printf("%s\n",words->word);
+            words = words->next;
+        }
+        filePrint = filePrint->next;
+    }
+*/
+
+    //free all files
+    fileStruct* filePtr = fileHead->next;
+    while(filePtr != NULL){
+        wordMap* wordPtr = filePtr->words; 
+        while(wordPtr != NULL){
+            wordMap* tempWord = wordPtr;
+            wordPtr = wordPtr->next;
+            free(tempWord->word);
+            free(tempWord);
+        }
+        fileStruct* tempFile = filePtr;
+        filePtr = filePtr->next;
+        free(tempFile);
+    }
+
+    //free thread arguments
+    free(fileHead);
+    free(tArgs);
+
 
     /*** Testing section, 
     //BELOW this is just testing tokenize
-    ***/ 
+   
    fileStruct* file = malloc(sizeof (fileStruct));
       //need to get filepath to name the file , maybe get this with dir
     file->fileName = argv[1];
@@ -378,9 +454,10 @@ int main(int argc, char** argv){
     int num = getNumWords(argv[1],file);
     printf("%d\n",num);
 
+ ***/ 
     //FREE all structs and mallocs
     free(fileSuffix);
-    
+    /*
     fileStruct* filePtr = file;
     wordMap* wordPtr = file->words; 
     while(filePtr != NULL){
@@ -394,7 +471,7 @@ int main(int argc, char** argv){
         filePtr = filePtr->next;
         free(tempFile);
     }
-
+*/
     return EXIT_SUCCESS;
 
 }
