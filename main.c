@@ -13,12 +13,6 @@
 #include "dqueue.h"
 #include "fqueue.h"
 
-//method to calculate WFD
-
-//method to recursively traverse directory
-
-//method to handle JSD
-
 
 //add running word count to method and return
 /*
@@ -78,8 +72,6 @@ void tokenize(fileStruct* file){
             insertWord(word,file);
 	        file->numTokens += 1;
 
-            //free(word);
-
         }
     }
     free(buf);
@@ -88,19 +80,14 @@ void tokenize(fileStruct* file){
 
 //insert word into wordMap in alphabetical order, uses insertion sort
 void insertWord(char* word, fileStruct* file){
-    
     wordMap* words = file->words;
-    //wordMap* prev = words;
     wordMap* prev = NULL;
-    //file->numTokens += 1;
 
     //First word added
     if(words->word == NULL){
         words->word = word;
         words->freq = 1;
         words->next = NULL;
-        
-        //file->numTokens += 1;
         return;
     }
     
@@ -108,9 +95,8 @@ void insertWord(char* word, fileStruct* file){
     while(words != NULL){
         //if word already exists, increment frequency/count
         if(strcmp(words->word,word) == 0){
-            words->freq += 1;
-            
-            //file->numTokens += 1;
+            words->freq += 1;   
+            free(word);         
             return;
         }else if(strcmp(word,words->word) < 0){ //if input word < current word alphabetically
             wordMap* newWord = malloc(sizeof(wordMap)); //create a new word
@@ -138,18 +124,17 @@ void insertWord(char* word, fileStruct* file){
         words= malloc(sizeof(wordMap));
         prev->next = words;
         words->freq = 1;
-        //file->numTokens += 1;
         words->word = word;
         words->next = NULL;
     } 
-    //free all words?
+    
 }
 
 //function to initialize wfd field in file struct
 void initWFD(struct fileStruct* file){
 	struct wordMap* crnt = file->words;
 	while(crnt != NULL){
-		crnt->wfd = (crnt->freq)/file->numTokens;
+		crnt->wfd = (double)(crnt->freq)/(double)(file->numTokens);
 		crnt = crnt->next;
 	}
 }
@@ -346,10 +331,8 @@ void* fileHandler(void* args){
         pthread_mutex_unlock(&tArgs->lock);
 
         //tokenize words in the file
-        tokenize(file);
-
-        printf("filename: %s num tokens: %d\n",file->fileName, file->numTokens);
-        
+        tokenize(file);        
+        initWFD(file);
         free(fileName);
     }while(fileQueue->count != 0 || dirQueue->active != 0);
 
@@ -358,17 +341,12 @@ void* fileHandler(void* args){
 
 //directory handler
 void* dirHandler(void* args){
-
-    //while loop keeps trying to dequeue from directory queue
-    //lock
-
     threadArgs* tArgs = (threadArgs*)args;
     fqueue* fileQueue = tArgs->fileQueue;
     dqueue* dirQueue = tArgs->dirQueue;
     char* suffix = tArgs->suffix;
 
-    //char* dirName = dDequeue(dirQueue);
-
+    //while loop keeps trying to dequeue from directory queue
     while(dirQueue->count != 0 || dirQueue->active != 0){
         char* dirName = dDequeue(dirQueue);
 
@@ -397,7 +375,7 @@ void* dirHandler(void* args){
             if(de->d_name[0] == '.'){
                 continue; 
             }
-            //printf("%s\n",de->d_name);
+           
             char* newPath = malloc(strlen(parentPath) + strlen(de->d_name) +1);
             strcpy(newPath,parentPath);
             strcat(newPath,de->d_name);
@@ -431,8 +409,6 @@ void* dirHandler(void* args){
         closedir(dirp);
     }
     
-
-    //unlock
     return 0;
 }
 
@@ -515,8 +491,7 @@ int main(int argc, char** argv){
                         strcpy(fileSuffix,tempSuffix);
                     }
                     fileSuffix[j] = tempSuffix[j];
-                }
-                
+                }     
                 free(tempSuffix);                
             }
         }else{
@@ -530,7 +505,6 @@ int main(int argc, char** argv){
     printf("file threads: %d\n",fileThreads);
     printf("analysis threads: %d\n",aThreads);
     printf("suffix is: %s\n", fileSuffix);
-
 
     //create and initialize queues
     dqueue* dirQueue = malloc(sizeof(dqueue));
@@ -563,19 +537,6 @@ int main(int argc, char** argv){
             perror("pthread_create");
         }
     }
-
-/*
-    //start directory threads
-    pthread_t* dTids = malloc(sizeof(pthread_t) * dirThreads);
-    for(int i = 0; i < dirThreads; i++){
-        int err;
-        err = pthread_create(&dTids[i],NULL,dirHandler,(void*)tArgs);
-        if(err != 0){
-            // errno = err;
-            perror("pthread_create");
-        }
-    }
-   */ 
 
     //enqueue file and directory queues
     for(int i = 1; i < argc; i++){
@@ -627,7 +588,7 @@ int main(int argc, char** argv){
     while(filePrint!=NULL){
         wordMap* words = filePrint->words;
         while(words != NULL){
-            printf("%s\n",words->word);
+            printf("%s, wfd: %f\n",words->word, words->wfd);
             words = words->next;
         }
         filePrint = filePrint->next;
@@ -654,49 +615,8 @@ int main(int argc, char** argv){
     free(dTids);
     free(fileHead);
     free(tArgs);
-
-
-    /*** Testing section, 
-    //BELOW this is just testing tokenize
-   
-   fileStruct* file = malloc(sizeof (fileStruct));
-      //need to get filepath to name the file , maybe get this with dir
-    file->fileName = argv[1];
-    file->numTokens = 0;
-    file->next = NULL;
-    file->words = malloc(sizeof (wordMap));
-    file->words->word = NULL; //initialize word
-
-    tokenize(file);
-
-    file->numTokens = getNumWords(file->fileName,file);
-    wordMap* words = file->words;
-
-    while(words != NULL){
-        printf("%s\n",words->word);
-        words = words->next;
-    }
-    int num = getNumWords(argv[1],file);
-    printf("%d\n",num);
-
- ***/ 
-    //FREE all structs and mallocs
     free(fileSuffix);
-    /*
-    fileStruct* filePtr = file;
-    wordMap* wordPtr = file->words; 
-    while(filePtr != NULL){
-        while(wordPtr != NULL){
-            wordMap* tempWord = wordPtr;
-            wordPtr = wordPtr->next;
-            free(tempWord->word);
-            free(tempWord);
-        }
-        fileStruct* tempFile = filePtr;
-        filePtr = filePtr->next;
-        free(tempFile);
-    }
-*/
+
     return EXIT_SUCCESS;
 
 }
