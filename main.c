@@ -8,6 +8,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <dirent.h>
+#include <math.h>
 #include "main.h"
 #include "dqueue.h"
 #include "fqueue.h"
@@ -83,7 +84,6 @@ void tokenize(fileStruct* file){
     }
     free(buf);
     close(fd);
-    return wordCount;
 }
 
 //insert word into wordMap in alphabetical order, uses insertion sort
@@ -181,7 +181,10 @@ int getNumWords(char* fileName, fileStruct* file){
 
 }
 
-/*
+//function to calculate kld
+double compute_kld(double wfd, double mean){
+	return wfd * log2(wfd/mean);
+}
 
 //calculates the JSD for a specified portion of the WFD//
 void* analysisPhase(struct jsdStruct** array, int start, int end){
@@ -193,21 +196,73 @@ void* analysisPhase(struct jsdStruct** array, int start, int end){
 		struct wordMap* word2 = crntStruct->file2->words;
 		while(word1 != NULL || word2 != NULL){
 			//compare words to see if same
-			if(compare(word1->word, word2->word) == 0){
+			if(strcmp(word1->word, word2->word) == 0){
 				//compute mean
 				double mean = .5 * (word1->wfd + word2->wfd);
 				//compute kld for each file
-				double kld1 = kld(word1->wfd, mean);
-				double kld2 = kld(word2->wfd, mean);
+				double kld1 = compute_kld(word1->wfd, mean);
+				double kld2 = compute_kld(word2->wfd, mean);
 				//add to running total
 				kld += (kld1 + kld2);
-				//increment same word copuio
-            }
-        }
-    }
+				//increment same word count
+				crntStruct->combined++;
+				//increment both words
+				word1 = word1->next;
+				word2 = word2->next;
+			}
+			else if(strcmp(word1->word, word2->word) < 0){
+				//word1 comes before word2
+				//compute mean
+				double mean = .5 * word1->wfd;
+				//compute kld1 since kld2 will be 0
+				double kld1 = compute_kld(word1->wfd, mean);
+				//add to running total
+				kld += kld1;
+				//increment word1 only
+				word1 = word1->next;
+			}
+			else{
+				//word2 comes before word1
+				//compute mean
+				double mean = .5 * word2->wfd;
+				//compute kld2 since kld1 will be 0
+				double kld2 = compute_kld(word2->wfd, mean);
+				//add to running total
+				kld += kld2;
+				//increment word2 only
+				word2 = word2->next;
+			}
+		}
+		//check to see if files aren't same size
+		struct wordMap* crnt;
+		if(word1 == NULL && word2 != NULL){
+			crnt = word2;
+		}
+		else if(word1 != NULL && word2 == NULL){
+			crnt = word1;
+		}
+		else{
+			crnt = NULL;
+		}
+		while(crnt != NULL){
+			//compute mean
+			double mean = .5 * crnt->wfd;
+			//compute kld1
+			double kld1 = compute_kld(crnt->wfd, mean);
+			//add to running total
+			kld += kld1;
+			//increment word1 only
+			crnt = crnt->next;
+		}
+		//compute jsd
+		double jsd = sqrt((1/2)*kld);
+		crntStruct->jsd = jsd;
+	}
+
+
 }
 
-*/
+
 
 
 int getFileSize(int fd){
@@ -354,7 +409,7 @@ void* dirHandler(void* args){
     return 0;
 }
 
-/*
+
 //init jsd struct array with all file pairs
 void initPairs(fileStruct* f, struct jsdStruct** array){
 	struct fileStruct* crnt = f;
@@ -376,7 +431,7 @@ void initPairs(fileStruct* f, struct jsdStruct** array){
 		crnt = crnt->next;
 	}
 }
-*/
+
 
 int main(int argc, char** argv){
     //Parameters initialized with default values

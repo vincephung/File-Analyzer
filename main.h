@@ -47,3 +47,6 @@ int getNumWords(char* fileName, fileStruct* fileStruct);
 int isFile(char *name);
 int isDir(char *name);
 void initWFD(struct fileStruct*);
+double compute_kld(double wfd, double mean);
+void* analysisPhase(struct jsdStruct** array, int start, int end);
+void initPairs(fileStruct* f, struct jsdStruct** array);
