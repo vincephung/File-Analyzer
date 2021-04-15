@@ -237,9 +237,10 @@ void* fileHandler(void* args){
     //repeat until the queue is empty and the directory threads have stopped
     //might be && not ||
     //while(fileQueue->count != 0 || dirQueue->active != 0){
+    
     while(fileQueue->count == 0 || dirQueue->active != 0){
         char* fileName = fDequeue(fileQueue);
-        
+
         //get tail of file list
         fileStruct* file = fileHead;
         fileStruct* prev = NULL;
@@ -281,6 +282,8 @@ void* dirHandler(void* args){
     dqueue* dirQueue = tArgs->dirQueue;
     char* suffix = tArgs->suffix;
 
+    char* dirName = dDequeue(dirQueue);
+/*
     while(dirQueue->count == 0 || dirQueue->active != 0){
         char* dirName = dDequeue(dirQueue);
         DIR *dirp = opendir(dirName);
@@ -302,7 +305,7 @@ void* dirHandler(void* args){
 
         //free(parentPath);
         //free(newPath);
-    */
+    
         while((de = readdir(dirp))){
             //ignore entries whose name begins with a period
             if(de->d_name[0] == '.'){
@@ -324,11 +327,11 @@ void* dirHandler(void* args){
                     }
                 }
             }
-            */
+            
         }
         closedir(dirp);
     }
-    
+*/    
 
     //unlock
     return 0;
@@ -425,7 +428,8 @@ int main(int argc, char** argv){
     dqueue* dirQueue = malloc(sizeof(dqueue));
     fqueue* fileQueue = malloc(sizeof(fqueue));
 
-    dInit(dirQueue,dirThreads,0);
+   // dInit(dirQueue,dirThreads,0);
+    dInit(dirQueue,dirThreads,dirThreads);
     fInit(fileQueue,fileThreads);
 
      //struct that contains both queues
