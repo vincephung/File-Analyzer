@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
+#include <dirent.h>
 #include "main.h"
 #include "dqueue.h"
 #include "fqueue.h"
@@ -191,20 +192,17 @@ int isDir(char *name) {
 
 //file handler
 void* fileHandler(void* args){
-
-    //lock
-    //while loop keeps trying to dequeue from file queue
     threadArgs* tArgs = (threadArgs*)args;
     fqueue* fileQueue = tArgs->fileQueue;
     dqueue* dirQueue = tArgs->dirQueue;
     fileStruct* fileHead = tArgs->fileHead;
 
+    //while loop keeps trying to dequeue from file queue
     //repeat until the queue is empty and the directory threads have stopped
     //might be && not ||
     //while(fileQueue->count != 0 || dirQueue->active != 0){
-    while(fileQueue->count == 0){
+    while(fileQueue->count == 0 || dirQueue->active != 0){
         char* fileName = fDequeue(fileQueue);
-        //once it gets a file, tokenize it
         
         //get tail of file list
         fileStruct* file = fileHead;
@@ -225,16 +223,12 @@ void* fileHandler(void* args){
         file->words = malloc(sizeof (wordMap));
         file->words->word = NULL; //initialize word
 
+        //tokenize words in the file
         tokenize(file);
-
         file->numTokens = getNumWords(file->fileName,file);
-    
         free(fileName);
     }
 
-    //tokenize(tokenArgs->file);
-    //unlock
-    //free(fileName);
     return 0;
 }
 
@@ -246,33 +240,75 @@ void* dirHandler(void* args){
 
     //needs to "recursively" open all directories and add them to queue
     //Each none directory entry is added to file queue
+    threadArgs* tArgs = (threadArgs*)args;
+    fqueue* fileQueue = tArgs->fileQueue;
+    dqueue* dirQueue = tArgs->dirQueue;
+    char* suffix = tArgs->suffix;
+
+    while(dirQueue->count == 0 || dirQueue->active != 0){
+        char* dirName = dDequeue(dirQueue);
+        DIR *dirp = opendir(dirName);
+        struct dirent *de;
+
+    /*
+        //Concat path everytime you go inside a new directory
+        char* parentPath = malloc(strlen(dirName) +2);
+        char* newPath = malloc(strlen(parentPath) + strlen(de->d_name));
+        strcpy(parentPath,dirName);
+        strcat(parentPath,"/");
+        strcpy(newPath,parentPath);
+        strcat(newPath,de->d_name);
+
+        memset(parentPath,'\0',sizeof(parentPath));
+        parentPath = realloc(parentPath,newPath);
+        strcpy(parentPath,newPath);
+        memset(newPath,'\0',strlen(newPath));
+
+        //free(parentPath);
+        //free(newPath);
+    */
+        while((de = readdir(dirp))){
+            //ignore entries whose name begins with a period
+            if(de->d_name[0] == '.'){
+                continue; 
+            }
+            printf("%s\n",de->d_name);
+
+    /*            
+            if(de->d_type == DT_DIR){
+                dEnqueue(dirQueue,de->d_name);
+            }else if(de->d_type == DT_REG){
+                //compare suffix
+                
+                for(int i = 0; i < strlen(suffix);i++){
+                    if(suffix[i] != de->d_name[i]){
+                        break;
+                    }else{
+                        fEnqueue(fileQueue,de->d_name);
+                    }
+                }
+            }
+            */
+        }
+        closedir(dirp);
+    }
     
-   
 
     //unlock
     return 0;
 }
 
 int main(int argc, char** argv){
-
-
     //Parameters initialized with default values
     int dirThreads = 1;
     int fileThreads = 1;
     int aThreads = 1;
-    //char* fileSuffix = ".txt";
     int suffixSize = 4;
     char* fileSuffix = malloc((suffixSize * sizeof(char)+1)); //size 5 for ".txt" default
     strcpy(fileSuffix, ".txt");
 
-    //initialize queues
-
-
-    /*
-        Handle arguments, regular and optional
-    */
+    //Handle arguments, regular and optional
     for(int i = 1; i < argc; i++){
-        
         //handle optional argument
         if(argv[i][0] == '-'){
             if(strlen(argv[i])!= 3 && argv[i][1] != 's'){
@@ -339,6 +375,7 @@ int main(int argc, char** argv){
     threadArgs* tArgs = malloc(sizeof (threadArgs));
     tArgs->dirQueue = dirQueue;
     tArgs->fileQueue = fileQueue;
+    tArgs->suffix = fileSuffix;
     //Creates the head of the fileStruct (dummyHead) set to null
     fileStruct* fileHead = malloc(sizeof(fileStruct));
     fileHead->next = NULL;
@@ -355,23 +392,17 @@ int main(int argc, char** argv){
         }
     }
     
-
-/*
     //start directory threads
     pthread_t dTids[dirThreads]; //hold thread ids
     for(int i = 0; i < dirThreads; i++){
         int err;
-        err = pthread_create(&dTids[i],NULL,dirHandler,(void*)dirQueue);
+        err = pthread_create(&dTids[i],NULL,dirHandler,(void*)tArgs);
         if(err != 0){
             // errno = err;
             perror("pthread_create");
         }
     }
-    */
-
-        //join threads?
-        //pthread_join
-
+    
     //enqueue file and directory queues
     for(int i = 1; i < argc; i++){
         if(isFile(argv[i])){
@@ -386,11 +417,11 @@ int main(int argc, char** argv){
         pthread_join(fTids[i],NULL);
     }
 
-/*
+
     for(int i = 0; i < dirThreads; i++){
         pthread_join(dTids[i],NULL);
     }
-*/
+
 
     //free queues
     dDestroy(dirQueue);
@@ -398,7 +429,7 @@ int main(int argc, char** argv){
     free(dirQueue);
     free(fileQueue);
     
-/*
+
     //test printing output
     fileStruct* filePrint = fileHead->next;
     while(filePrint!=NULL){
@@ -409,7 +440,7 @@ int main(int argc, char** argv){
         }
         filePrint = filePrint->next;
     }
-*/
+
 
     //free all files
     fileStruct* filePtr = fileHead->next;
