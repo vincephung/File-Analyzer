@@ -21,6 +21,10 @@ int dInit(dqueue *Q, unsigned capacity, int* active)
 
 int dDestroy(dqueue *Q)
 {
+	for(int i = 0; i < Q->count; i++){
+		char* item = Q->data[i];
+		free(item);
+	}
 	free(Q->data);
 	pthread_mutex_destroy(&Q->lock);
 	pthread_cond_destroy(&Q->read_ready);
@@ -44,7 +48,7 @@ int dEnqueue(dqueue *Q, char* item)
 	
 	//unsigned i = Q->head + Q->count;
 	
-        Q->data[Q->head] = malloc((sizeof item + 1)* sizeof(char));
+	Q->data[Q->head] = malloc((sizeof item + 2)* sizeof(char));
 	strcpy(Q->data[Q->head], item);
 		
 	++Q->count;

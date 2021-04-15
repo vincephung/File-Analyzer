@@ -20,6 +20,10 @@ int fInit(fqueue *Q, unsigned capacity)
 
 int fDestroy(fqueue *Q)
 {
+	for(int i = 0; i < Q->count; i++){
+		char* item = Q->data[i];
+		free(item);
+	}
 	free(Q->data);
 	pthread_mutex_destroy(&Q->lock);
 	pthread_cond_destroy(&Q->read_ready);
@@ -42,7 +46,7 @@ int fEnqueue(fqueue *Q, char* item)
 	unsigned i = Q->head + Q->count;
 	if (i >= Q->capacity) i -= Q->capacity;
 	
-        Q->data[Q->head] = malloc((sizeof item + 1)* sizeof(char));
+    Q->data[Q->head] = malloc((sizeof item + 2)* sizeof(char));
 	strcpy(Q->data[Q->head], item);
 		
 	++Q->count;

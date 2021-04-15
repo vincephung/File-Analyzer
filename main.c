@@ -124,7 +124,6 @@ void insertWord(char* word, fileStruct* file){
         //if input word > curWord, move onto next word in the file
         prev = words;
         words = words->next;  
-         
     }
     
     //If input word is greater than all words in the list, add to the tail
@@ -134,6 +133,7 @@ void insertWord(char* word, fileStruct* file){
         words->freq = 1;
         //file->numTokens += 1;
         words->word = word;
+        words->next = NULL;
     } 
     //free all words?
 }
@@ -200,6 +200,7 @@ void* fileHandler(void* args){
     //tokenize(tokenArgs->file);
 
     //unlock
+    return 0;
 }
 
 //directory handler
@@ -214,6 +215,7 @@ void* dirHandler(void* args){
    
 
     //unlock
+    return 0;
 }
 
 int main(int argc, char** argv){
@@ -289,23 +291,14 @@ int main(int argc, char** argv){
 
 
     //create and initialize queues
-
     dqueue* dirQueue = malloc(sizeof(dqueue));
     fqueue* fileQueue = malloc(sizeof(fqueue));
 
     dInit(dirQueue,dirThreads,0);
     fInit(fileQueue,fileThreads);
 
-/*
-    dDestroy(dirQueue);
-    fDestroy(fQueue);
-    free(dirQueue);
-    free(fileQueue);
-*/
     //start file threads
     pthread_t fTids[fileThreads]; //hold thread ids
-
- /*  
     for(int i = 0; i < fileThreads; i++){
         int err;
         err = pthread_create(&fTids[i],NULL,fileHandler,NULL);
@@ -314,7 +307,7 @@ int main(int argc, char** argv){
             perror("pthread_create");
         }
     }
-    */
+    
 
 /*
     //start directory threads
@@ -334,7 +327,7 @@ int main(int argc, char** argv){
 
 
     //enqueue file and directory queues
-    for(int i = 0; i < argc; i++){
+    for(int i = 1; i < argc; i++){
         if(isFile(argv[i])){
             fEnqueue(fileQueue,argv[i]);
         }else if(isDir(argv[i])){
@@ -342,6 +335,22 @@ int main(int argc, char** argv){
         }
     }
 
+    //join threads
+    for(int i = 0; i < fileThreads;i++){
+        pthread_join(fTids[i],NULL);
+    }
+
+/*
+    for(int i = 0; i < dirThreads; i++){
+        pthread_join(dTids[i],NULL);
+    }
+*/
+
+    //free queues
+    dDestroy(dirQueue);
+    fDestroy(fileQueue);
+    free(dirQueue);
+    free(fileQueue);
 
     /*** Testing section, 
     //BELOW this is just testing tokenize
@@ -350,7 +359,9 @@ int main(int argc, char** argv){
       //need to get filepath to name the file , maybe get this with dir
     file->fileName = argv[1];
     file->numTokens = 0;
+    file->next = NULL;
     file->words = malloc(sizeof (wordMap));
+    file->words->word = NULL; //initialize word
 
     tokenize(file);
 
@@ -364,8 +375,6 @@ int main(int argc, char** argv){
     int num = getNumWords(argv[1],file);
     printf("%d\n",num);
 
-    return EXIT_SUCCESS;
-
     //FREE all structs and mallocs
     free(fileSuffix);
     
@@ -375,11 +384,14 @@ int main(int argc, char** argv){
         while(wordPtr != NULL){
             wordMap* tempWord = wordPtr;
             wordPtr = wordPtr->next;
+            free(tempWord->word);
             free(tempWord);
         }
         fileStruct* tempFile = filePtr;
         filePtr = filePtr->next;
         free(tempFile);
     }
+
+    return EXIT_SUCCESS;
 
 }
