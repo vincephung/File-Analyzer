@@ -45,3 +45,4 @@ void insertWord(char* word, fileStruct* fileStruct);
 int getNumWords(char* fileName, fileStruct* fileStruct);
 int isFile(char *name);
 int isDir(char *name);
+void initWFD(struct wordMap*, int);
