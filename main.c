@@ -33,8 +33,8 @@ void tokenize(fileStruct* file){
 
     //loop through buffer and get words
     for(int i = 0; i < fileSize; i++){
+        buf[i] = tolower(buf[i]);
         char curLetter = buf[i];
-        curLetter = tolower(curLetter);
 
         //handle duplicate spaces like hi <space><space> there
         if(isspace(buf[start])){
