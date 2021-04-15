@@ -259,7 +259,7 @@ void* analysisPhase(struct jsdStruct** array, int start, int end){
 		crntStruct->jsd = jsd;
 	}
 
-
+    return NULL;
 }
 
 
@@ -474,13 +474,17 @@ int main(int argc, char** argv){
         //handle optional argument
         if(argv[i][0] == '-'){
             if(strlen(argv[i])!= 3 && argv[i][1] != 's'){
-                perror("Missing or invalid argument");
+                fprintf(stderr,"Missing or invalid argument\n");
+                free(fileSuffix);
+                return EXIT_FAILURE;
                 //halt
             }
 
             //argument type must be positive number for threads
-            if(argv[i][2] <= 0 && argv[i][1] != 's'){
-                perror("Invalid argument");
+            if((argv[i][2]-'0') <= 0 && argv[i][1] != 's'){
+                fprintf(stderr,"Threads must be a positive integer\n");
+                free(fileSuffix);
+                return EXIT_FAILURE;
                 //halt
             }
 
@@ -508,9 +512,11 @@ int main(int argc, char** argv){
                 for(int j = 0; j < wordIndex; j++){
                     if(suffixSize == j){
                         fileSuffix = (char*) realloc(fileSuffix,suffixSize*2);
+                        strcpy(fileSuffix,tempSuffix);
                     }
                     fileSuffix[j] = tempSuffix[j];
                 }
+                
                 free(tempSuffix);                
             }
         }else{
@@ -530,9 +536,9 @@ int main(int argc, char** argv){
     dqueue* dirQueue = malloc(sizeof(dqueue));
     fqueue* fileQueue = malloc(sizeof(fqueue));
 
-   // dInit(dirQueue,dirThreads,0);
    //Consider "main" as a directory thread because it is adding from the argument list.
-    dInit(dirQueue,dirThreads,dirThreads+1);
+    //dInit(dirQueue,dirThreads,dirThreads+1);
+    dInit(dirQueue,dirThreads,dirThreads);
     fInit(fileQueue,fileThreads);
 
      //struct that contains both queues
@@ -548,7 +554,6 @@ int main(int argc, char** argv){
     tArgs->fileHead = fileHead;
 
     //start file threads
-    // fTids[fileThreads]; //hold thread ids
     pthread_t* fTids = malloc(sizeof(pthread_t) * fileThreads);
     for(int i = 0; i < fileThreads; i++){
         int err;
@@ -559,11 +564,9 @@ int main(int argc, char** argv){
         }
     }
 
-   
+/*
     //start directory threads
-    //pthread_t dTids[dirThreads]; //hold thread 
     pthread_t* dTids = malloc(sizeof(pthread_t) * dirThreads);
-
     for(int i = 0; i < dirThreads; i++){
         int err;
         err = pthread_create(&dTids[i],NULL,dirHandler,(void*)tArgs);
@@ -572,7 +575,8 @@ int main(int argc, char** argv){
             perror("pthread_create");
         }
     }
-    
+   */ 
+
     //enqueue file and directory queues
     for(int i = 1; i < argc; i++){
         if(isFile(argv[i])){
@@ -582,27 +586,34 @@ int main(int argc, char** argv){
         }
     }
 
-    //Once main thread adds all argument directories, remove it from the active thread list
-    dirQueue->active--;
+    //start directory threads
+    pthread_t* dTids = malloc(sizeof(pthread_t) * dirThreads);
+    for(int i = 0; i < dirThreads; i++){
+        int err;
+        err = pthread_create(&dTids[i],NULL,dirHandler,(void*)tArgs);
+        if(err != 0){
+            // errno = err;
+            perror("pthread_create");
+        }
+    }
 
-    //printf("decrement active is : %d\n",dirQueue->active);
+    //Once main thread adds all argument directories, remove it from the active thread list
+    //dirQueue->active--;
 
     //join directory threads
     for(int i = 0; i < dirThreads; i++){
         pthread_join(dTids[i],NULL);        
     }
 
-    //if directory threads are done, file queue can close?
+    //if directory threads are done, file queue can close
     if(dirQueue->active == 0){
         fClose(fileQueue);
     }
     
-
     //join file threads
     for(int i = 0; i < fileThreads;i++){
         pthread_join(fTids[i],NULL);
     }
-
 
     //free queues
     dDestroy(dirQueue);

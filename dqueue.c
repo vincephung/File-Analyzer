@@ -72,8 +72,7 @@ char* dDequeue(dqueue *Q)
 
 			return NULL;
 		}
-		while(Q->count == 0 && (Q->active) > 0){
-			printf("active is : %d\n",Q->active);
+		while(Q->count == 0 && (Q->active > 0)){
 			pthread_cond_wait(&Q->read_ready, &Q->lock);
 		}
 		
