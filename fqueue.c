@@ -11,7 +11,7 @@ int fInit(fqueue *Q, unsigned capacity)
 	Q->head = 0;
 	Q->data = malloc(sizeof(char*)*capacity);
 	Q->capacity = capacity;
-	Q->active = 1;
+	Q->open = 1;
 	pthread_mutex_init(&Q->lock, NULL);
 	pthread_cond_init(&Q->read_ready, NULL);
 	pthread_cond_init(&Q->write_ready, NULL);
@@ -66,18 +66,18 @@ char* fDequeue(fqueue *Q)
 {
 	pthread_mutex_lock(&Q->lock);
 	
-	/*if(Q->count == 0){
-		while(Q->count == 0 && (*Q->active) > 0){
-			pthread_cond_wait(&Q->read_ready, &Q->lock);
-		}
-		if(Q->count == 0){
-			pthread_mutex_unlock(&Q->lock);
-			return NULL;
-		}
-	}	
-	*/
+/*
 	while (Q->count == 0) {
 		pthread_cond_wait(&Q->read_ready, &Q->lock);
+	}
+	*/
+
+	while (Q->count == 0 && Q->open) {
+		pthread_cond_wait(&Q->read_ready, &Q->lock);
+	}
+	if (Q->count == 0) {
+		pthread_mutex_unlock(&Q->lock);
+		return NULL;
 	}
 	
 	char* item = malloc((sizeof(Q->data[Q->head])+2)*sizeof(char));
@@ -93,4 +93,14 @@ char* fDequeue(fqueue *Q)
 	pthread_mutex_unlock(&Q->lock);
 	
 	return item;
+}
+
+void fClose(fqueue *Q)
+{
+	pthread_mutex_lock(&Q->lock);
+	Q->open = 0;
+	pthread_cond_broadcast(&Q->read_ready);
+	pthread_cond_broadcast(&Q->write_ready);
+	pthread_mutex_unlock(&Q->lock);	
+
 }

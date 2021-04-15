@@ -30,8 +30,8 @@ void tokenize(fileStruct* file){
     int fd = open(file->fileName,O_RDONLY);
     int fileSize = getFileSize(fd);
 
-    char buf[fileSize];
-   // char* buf = malloc(fileSize * sizeof(char));
+    //char buf[fileSize];
+    char* buf = malloc(fileSize * sizeof(char));
     read(fd,buf,fileSize);
 
     int start = 0; //beginning index of current word
@@ -65,7 +65,7 @@ void tokenize(fileStruct* file){
                 //Only tokens allowed are letters, numbers, dash and spaces
                 char bufLetter = buf[start+j]; //current letter in the buffer
                 
-                if(!isalpha(bufLetter) && (bufLetter != '-') && !isspace(bufLetter)){   
+                if(!isalnum(bufLetter) && (bufLetter != '-') && !isspace(bufLetter)){   
                     continue;
                 }
 
@@ -76,7 +76,7 @@ void tokenize(fileStruct* file){
             start = i+1;
             
             insertWord(word,file);
-	    file->numTokens += 1;
+	        file->numTokens += 1;
 
             //free(word);
 
@@ -279,13 +279,24 @@ int getFileSize(int fd){
 
 int isFile(char *name) {
 	struct stat data;
-	stat(name, &data);
+    int err = stat(name, &data);
+    if(err){
+        //perror(name);
+        //this means not a file
+        return 0;
+    }
+    
 	return S_ISREG(data.st_mode);
 }
 
 int isDir(char *name) {
 	struct stat data;
-	stat(name, &data);
+    int err = stat(name, &data);
+    if(err){
+        //perror(name);
+        //this means not a directoy
+        return 0;
+    }
 	return S_ISDIR(data.st_mode);
 }
 
@@ -304,8 +315,14 @@ void* fileHandler(void* args){
     do{
         char* fileName = fDequeue(fileQueue);
 
+        // No file, so SKIP, happens when more threads needed than files
+        if(fileName == NULL){
+            return NULL; 
+        }
+
         //Need to lock when appending to shared linked list of files
         pthread_mutex_lock(&tArgs->lock);
+        
         //get tail of file list
         fileStruct* file = fileHead;
         fileStruct* prev = NULL;
@@ -336,7 +353,8 @@ void* fileHandler(void* args){
         printf("filename: %s num tokens: %d\n",file->fileName, file->numTokens);
         
         free(fileName);
-    }while(fileQueue->count != 0 || dirQueue->active != 0);
+    }
+    while(fileQueue->count != 0 || dirQueue->active != 0);
 
     return 0;
 }
@@ -553,14 +571,17 @@ int main(int argc, char** argv){
         }
     }
 
-    //join threads
-    for(int i = 0; i < fileThreads;i++){
-        pthread_join(fTids[i],NULL);
-    }
-
-
+    //join directory threads
     for(int i = 0; i < dirThreads; i++){
         pthread_join(dTids[i],NULL);
+    }
+
+    //if directory threads are done, file queue can close?
+    fClose(fileQueue);
+
+    //join file threads
+    for(int i = 0; i < fileThreads;i++){
+        pthread_join(fTids[i],NULL);
     }
 
 
