@@ -58,3 +58,5 @@ void initWFD(struct fileStruct*);
 double compute_kld(double wfd, double mean);
 void* analysisPhase(void*);
 void initPairs(fileStruct* f, struct jsdStruct** array);
+void freeQueues(struct fqueue* fileQueue, struct dqueue* dirQueue);
+void freeFiles(fileStruct* fileHead);

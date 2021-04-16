@@ -588,11 +588,26 @@ int main(int argc, char** argv){
         pthread_join(fTids[i],NULL);
     }
 
+
+    //Check for fewer than two files (user must enter minimum of two files)
+    if(*tArgs->numFiles < 2){
+        fprintf(stderr,"Error: Less than two files found\n");
+        freeQueues(fileQueue,dirQueue);
+        freeFiles(fileHead);
+        free(fTids);
+        free(dTids);
+        free(tArgs);
+        free(fileSuffix);
+        return EXIT_FAILURE;
+    }
+
+/*
     //free queues
     dDestroy(dirQueue);
     fDestroy(fileQueue);
     free(dirQueue);
     free(fileQueue);
+    */
     
 	//allocate pair array
 	int numFiles = *tArgs->numFiles;
@@ -663,8 +678,25 @@ int main(int argc, char** argv){
         filePrint = filePrint->next;
     }
 
+    freeQueues(fileQueue,dirQueue);
+    freeFiles(fileHead);
+    free(fTids);
+    free(dTids);
+    free(tArgs);
+    free(fileSuffix);
 
-    //free all files
+    return EXIT_SUCCESS;
+
+}
+
+void freeQueues(fqueue* fileQueue, dqueue* dirQueue){
+    dDestroy(dirQueue);
+    fDestroy(fileQueue);
+    free(dirQueue);
+    free(fileQueue);
+}
+
+void freeFiles(fileStruct* fileHead){
     fileStruct* filePtr = fileHead->next;
     while(filePtr != NULL){
         wordMap* wordPtr = filePtr->words; 
@@ -676,17 +708,8 @@ int main(int argc, char** argv){
         }
         fileStruct* tempFile = filePtr;
         filePtr = filePtr->next;
+        free(tempFile->fileName);
         free(tempFile);
     }
-
-
-    //free thread arguments
-    free(fTids);
-    free(dTids);
     free(fileHead);
-    free(tArgs);
-    free(fileSuffix);
-
-    return EXIT_SUCCESS;
-
 }
