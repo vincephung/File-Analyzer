@@ -162,6 +162,15 @@ void* analysisPhase(void* args){
 		double kld1 = 0;
 		double kld2 = 0;
 		struct jsdStruct* crntStruct = array[i];
+		//blank file check
+		if(crntStruct->file1->numTokens == 0 && crntStruct->file2->numTokens == 0){
+			continue;
+		}
+		else if(crntStruct->file1->numTokens == 0 || crntStruct->file2->numTokens == 0){
+			crntStruct->jsd = 1;
+			continue;
+		}
+
 		struct wordMap* word1 = crntStruct->file1->words;
 		struct wordMap* word2 = crntStruct->file2->words;
 		while(word1 != NULL && word2 != NULL){
@@ -653,7 +662,7 @@ int main(int argc, char** argv){
 
 	//print results
 	for(int i=0; i<pairNum; i++){
-		printf("%s %s %d %f\n", result[i]->file1->fileName, result[i]->file2->fileName, result[i]->combined, result[i]->jsd);
+		printf("%f %s %s\n", result[i]->jsd, result[i]->file1->fileName, result[i]->file2->fileName);
 	}
 
     freeJSDArray(result, pairNum);
