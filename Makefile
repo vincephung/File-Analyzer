@@ -1,8 +1,8 @@
-main: main.o dqueue.o fqueue.o
-	gcc -g -std=gnu99 -Wvla -Wall -fsanitize=address,undefined -pthread -o main dqueue.o fqueue.o main.o -lm
+compare: compare.o dqueue.o fqueue.o
+	gcc -g -std=gnu99 -Wvla -Wall -fsanitize=address,undefined -pthread -o compare dqueue.o fqueue.o compare.o -lm
 
-main.o: main.c main.h
-	gcc -c -g -std=gnu99 -Wvla -Wall -fsanitize=address,undefined main.c -pthread
+compare.o: compare.c compare.h
+	gcc -c -g -std=gnu99 -Wvla -Wall -fsanitize=address,undefined compare.c -pthread
 
 test: test.o  dqueue.o
 	gcc -g -std=gnu99 -Wvla -Wall -fsanitize=address,undefined -o test test.o dqueue.o -pthread
