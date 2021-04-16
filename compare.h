@@ -60,3 +60,4 @@ void* analysisPhase(void*);
 void initPairs(fileStruct* f, struct jsdStruct** array);
 void freeQueues(struct fqueue* fileQueue, struct dqueue* dirQueue);
 void freeFiles(fileStruct* fileHead);
+void freeJSDArray(struct jsdStruct**, int);
