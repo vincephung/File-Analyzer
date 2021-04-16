@@ -228,7 +228,6 @@ void* analysisPhase(void* args){
 			}
 		}
 		//check to see if files aren't same size
-		struct wordMap* crnt;
 		if(word1 == NULL && word2 != NULL){
 			//compute mean
 			double mean = .5 * word2->wfd;
@@ -440,7 +439,17 @@ void initPairs(fileStruct* f, struct jsdStruct** array){
 }
 
 int cmpfunc (const void * a, const void * b){
-	return ((struct jsdStruct*)a)->combined - ((struct jsdStruct*)b)->combined;
+	struct jsdStruct* aStruct = *(struct jsdStruct**)a;
+	struct jsdStruct* bStruct = *(struct jsdStruct**)b;
+	if(aStruct->combined < bStruct->combined){
+		return -1;
+	}
+	else if(aStruct->combined == bStruct->combined){
+		return 0;
+	}
+	else{
+		return 1;
+	}
 }
 
 
@@ -601,15 +610,7 @@ int main(int argc, char** argv){
         free(tArgs);
         free(fileSuffix);
         return EXIT_FAILURE;
-    }
-
-/*
-    //free queues
-    dDestroy(dirQueue);
-    fDestroy(fileQueue);
-    free(dirQueue);
-    free(fileQueue);
-    */
+    }/
     
 	//allocate pair array
 	int numFiles = *tArgs->numFiles;
@@ -619,23 +620,25 @@ int main(int argc, char** argv){
 	initPairs(fileHead, result);
 
 	//divide work based on number of threads
+	//check for uneven number
+	int remainder = pairNum % aThreads;
 	int perThread = pairNum / aThreads;
 
 	//start analysis threads
     	pthread_t* aTids = malloc(sizeof(pthread_t) * aThreads);
 	int index = 0;
-/*	 struct aArgs* args = malloc(sizeof(struct aArgs));
-	args->array = result;
-	args->start = index;
-	index += perThread;
-	args->end = index;
 
-	*analysisPhase((void*)args);*/
 	for(int i=0; i<aThreads; i++){
 	        struct aArgs* args = malloc(sizeof(struct aArgs));
 		args->array = result;
 		args->start = index;
-		index += perThread;
+		if(remainder > 0){
+			index += perThread + 1;
+			remainder--;
+		}
+		else{
+			index += perThread;
+		}
 		args->end = index; 
 		int err;
        		err = pthread_create(&aTids[i],NULL,analysisPhase,(void*)args);
@@ -657,28 +660,6 @@ int main(int argc, char** argv){
 	for(int i=0; i<pairNum; i++){
 		printf("%s %s %d %f\n", result[i]->file1->fileName, result[i]->file2->fileName, result[i]->combined, result[i]->jsd);
 	}
-	//test to make sure working
-	printf("%d\n", pairNum);
-	for(int i=0; i<pairNum; i++){
-		printf("%s %s %f % d\n", result[i]->file1->fileName, result[i]->file2->fileName, result[i]->jsd, result[i]->combined);
-	}
-
-    //testing input
-    printf("dir threads: %d\n",dirThreads);
-    printf("file threads: %d\n",fileThreads);
-    printf("analysis threads: %d\n",aThreads);
-    printf("suffix is: %s\n", fileSuffix);
-
-    //test printing output
-    fileStruct* filePrint = fileHead->next;
-    while(filePrint!=NULL){
-        wordMap* words = filePrint->words;
-        while(words != NULL){
-            printf("%s, wfd: %f\n",words->word, words->wfd);
-            words = words->next;
-        }
-        filePrint = filePrint->next;
-    }
 
     freeJSDArray(result, pairNum);
     freeQueues(fileQueue,dirQueue);
