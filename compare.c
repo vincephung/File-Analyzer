@@ -219,7 +219,8 @@ void* analysisPhase(void* args){
 		double jsd = sqrt(.5 * kld1  + .5 * kld2);
 		crntStruct->jsd = jsd;
 	}
-
+	free(a);
+	
     return NULL;
 }
 
@@ -429,6 +430,13 @@ void freeFiles(fileStruct* fileHead){
         free(tempFile);
     }
     free(fileHead);
+}
+
+void freeJSDArray(struct jsdStruct** array, int pairNum){
+	for(int i=0; i<pairNum; i++){
+		free(array[i]);
+	}
+	free(array);
 }
 
 int main(int argc, char** argv){
@@ -658,14 +666,16 @@ int main(int argc, char** argv){
         filePrint = filePrint->next;
     }
 
+    freeJSDArray(result, pairNum);
     freeQueues(fileQueue,dirQueue);
     freeFiles(fileHead);
     free(fTids);
     free(dTids);
+    free(aTids);
     free(tArgs);
     free(fileSuffix);
+    //aArgs struct freed by each thread once it's completed
 
     return EXIT_SUCCESS;
 
 }
-
