@@ -44,8 +44,6 @@ void tokenize(fileStruct* file){
         //space denotes end of word
         //fileSize -1 means end of file
         if(isspace(curLetter) || i == fileSize-1){
-            //end = ( i== fileSize-1) ? i+1 : i;
-
             if(i == fileSize-1){
                 if(isspace(curLetter)){//file ends on a space
                     end = i; 
@@ -55,8 +53,6 @@ void tokenize(fileStruct* file){
             }else{
                 end = i; //regular word ending
             }
-
-            
 
             int maxWordLength = end - start + 1; //+1 for null term, could be smaller if the input is contains nonalphanumerical or "-"
 
@@ -81,7 +77,6 @@ void tokenize(fileStruct* file){
             
             insertWord(word,file);
 	        file->numTokens += 1;
-
         }
     }
     free(buf);
@@ -123,12 +118,10 @@ void insertWord(char* word, fileStruct* file){
             }
             return;
         }
-        
         //if input word > curWord, move onto next word in the file
         prev = words;
         words = words->next;  
     }
-    
     //If input word is greater than all words in the list, add to the tail
     if(words == NULL){        
         words= malloc(sizeof(wordMap));
@@ -137,43 +130,20 @@ void insertWord(char* word, fileStruct* file){
         words->word = word;
         words->next = NULL;
     } 
-    
 }
 
 //function to initialize wfd field in file struct
 void initWFD(struct fileStruct* file){
 	struct wordMap* crnt = file->words;
 	while(crnt != NULL){
+        //empty file has wfd of 0
+        if(file->numTokens == 0){
+            crnt->wfd = 0;
+            return;
+        }
 		crnt->wfd = (double)(crnt->freq)/(double)(file->numTokens);
 		crnt = crnt->next;
 	}
-}
-
-//Return total number of words in a specific file
-int getNumWords(char* fileName, fileStruct* file){
-    fileStruct* curFile = file;
-    while(curFile != NULL){
-        //get info for specific file
-        if(strcmp(curFile->fileName,fileName) == 0){
-            break;
-        }
-        curFile = curFile->next;
-    }
-
-    if(curFile == NULL){
-        //error, this mean file was not found
-        //exit(1);
-    }
-    
-    int numWords = 0;
-    wordMap* word = curFile->words;
-    while(word!= NULL){
-        numWords += word->freq;
-        word = word->next;
-    }
-
-    return numWords;
-
 }
 
 //function to calculate kld
@@ -253,9 +223,6 @@ void* analysisPhase(void* args){
     return NULL;
 }
 
-
-
-
 int getFileSize(int fd){
     struct stat data;
     int err = fstat(fd,&data);
@@ -329,10 +296,11 @@ void* fileHandler(void* args){
         file->numTokens = 0;
         file->next = NULL;
         file->words = malloc(sizeof (wordMap));
+        file->words->next = NULL;
         file->words->word = NULL; //initialize word
 
-	//increment file counter
-	(*numFiles)++;
+        //increment file counter
+        (*numFiles)++;
 
         pthread_mutex_unlock(&tArgs->lock);
 
@@ -341,7 +309,6 @@ void* fileHandler(void* args){
         initWFD(file);
        // free(fileName);
     }while(fileQueue->count != 0 || dirQueue->active != 0);
-
     return 0;
 }
 
@@ -355,7 +322,6 @@ void* dirHandler(void* args){
     //while loop keeps trying to dequeue from directory queue
     while(dirQueue->count != 0 || dirQueue->active != 0){
         char* dirName = dDequeue(dirQueue);
-
         //empty queue?
         if(dirName == NULL){
             return NULL;
@@ -414,10 +380,8 @@ void* dirHandler(void* args){
         free(dirName);
         closedir(dirp);
     }
-    
     return 0;
 }
-
 
 //init jsd struct array with all file pairs
 void initPairs(fileStruct* f, struct jsdStruct** array){
@@ -440,6 +404,31 @@ void initPairs(fileStruct* f, struct jsdStruct** array){
 
 int cmpfunc (const void * a, const void * b){
 	return ((struct jsdStruct*)a)->combined - ((struct jsdStruct*)b)->combined;
+}
+
+void freeQueues(fqueue* fileQueue, dqueue* dirQueue){
+    dDestroy(dirQueue);
+    fDestroy(fileQueue);
+    free(dirQueue);
+    free(fileQueue);
+}
+
+void freeFiles(fileStruct* fileHead){
+    fileStruct* filePtr = fileHead->next;
+    while(filePtr != NULL){
+        wordMap* wordPtr = filePtr->words; 
+        while(wordPtr != NULL){
+            wordMap* tempWord = wordPtr;
+            wordPtr = wordPtr->next;
+            free(tempWord->word);
+            free(tempWord);
+        }
+        fileStruct* tempFile = filePtr;
+        filePtr = filePtr->next;
+        free(tempFile->fileName);
+        free(tempFile);
+    }
+    free(fileHead);
 }
 
 int main(int argc, char** argv){
@@ -588,7 +577,6 @@ int main(int argc, char** argv){
         pthread_join(fTids[i],NULL);
     }
 
-
     //Check for fewer than two files (user must enter minimum of two files)
     if(*tArgs->numFiles < 2){
         fprintf(stderr,"Error: Less than two files found\n");
@@ -600,15 +588,7 @@ int main(int argc, char** argv){
         free(fileSuffix);
         return EXIT_FAILURE;
     }
-
-/*
-    //free queues
-    dDestroy(dirQueue);
-    fDestroy(fileQueue);
-    free(dirQueue);
-    free(fileQueue);
-    */
-    
+        
 	//allocate pair array
 	int numFiles = *tArgs->numFiles;
 	int pairNum = .5 * (numFiles) * (numFiles-1);
@@ -643,7 +623,7 @@ int main(int argc, char** argv){
        		 }
 	}
 
-	//join analysis threads
+	    //join analysis threads
     	for(int i = 0; i < aThreads; i++){
         	pthread_join(aTids[i],NULL);        
    	 }
@@ -689,27 +669,3 @@ int main(int argc, char** argv){
 
 }
 
-void freeQueues(fqueue* fileQueue, dqueue* dirQueue){
-    dDestroy(dirQueue);
-    fDestroy(fileQueue);
-    free(dirQueue);
-    free(fileQueue);
-}
-
-void freeFiles(fileStruct* fileHead){
-    fileStruct* filePtr = fileHead->next;
-    while(filePtr != NULL){
-        wordMap* wordPtr = filePtr->words; 
-        while(wordPtr != NULL){
-            wordMap* tempWord = wordPtr;
-            wordPtr = wordPtr->next;
-            free(tempWord->word);
-            free(tempWord);
-        }
-        fileStruct* tempFile = filePtr;
-        filePtr = filePtr->next;
-        free(tempFile->fileName);
-        free(tempFile);
-    }
-    free(fileHead);
-}
