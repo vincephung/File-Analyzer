@@ -10,3 +10,19 @@ Testing collection phase:
                 To test computing the WFD, we had to make sure that tokenizer was working correctly and that the WFD structure was valid. We used test cases that included non-alphanumeric characters, variations of words that contained upper and lowercase characters etc.
     -Testing threads:
                 To make sure that multiple threads were actually running, we had print statements inside of the thread function handlers that would print the working thread’s id. We used various amounts of threads to make sure that the program would work with any number of threads, ex. Including arguments such as -d4 -f2.
+
+Testing analysis phase:
+	-Testing correct WFD:
+		-used assert() to make sure the sum of all the WFDs for each file was equal to 1 before continuing to analysis Phase
+	-Testing initPairs():
+		-Made sure the array of jsdStruct pointers was allocated and freed properly by utilizing AddressSanitizer, UBSan, and gdb
+	-Testing Analysis threads:
+		-used gdb to make sure the right number of threads were being started and joined
+		-tried file different numbers and analysis thread numbers that led to even and uneven allocation of file comparisons among threads
+		-used > and cmp on the terminal to make sure output was consistent regardless of the number of threads
+	-Testing jsd computation:
+		-created small scale test cases that could easily be done by hand and compared manual calculation with programm output
+		-made sure to test edge cases where files had no similarity, one of the files were blank, both files were blank, or both files were exactly the same
+		-tested comparisons between large txt files found on the internet and made sure program output was consistent
+	-Memory Leaks:
+		-all memory leak testing utilized AddressSanitizer and UBSan
