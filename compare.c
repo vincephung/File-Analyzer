@@ -44,8 +44,19 @@ void tokenize(fileStruct* file){
         //space denotes end of word
         //fileSize -1 means end of file
         if(isspace(curLetter) || i == fileSize-1){
-            //i+1 because if file was: "hi there", i would be at "e"
-            end = ( i== fileSize-1) ? i+1 : i;
+            //end = ( i== fileSize-1) ? i+1 : i;
+
+            if(i == fileSize-1){
+                if(isspace(curLetter)){//file ends on a space
+                    end = i; 
+                }else{ //file ends on a character
+                    end = i+1; //i+1 because if file was: "hi there", i would be at "e"
+                }
+            }else{
+                end = i; //regular word ending
+            }
+
+            
 
             int maxWordLength = end - start + 1; //+1 for null term, could be smaller if the input is contains nonalphanumerical or "-"
 
