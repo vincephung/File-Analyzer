@@ -167,7 +167,7 @@ void* analysisPhase(void* args){
 			continue;
 		}
 		else if(crntStruct->file1->numTokens == 0 || crntStruct->file2->numTokens == 0){
-			crntStruct->jsd = 1;
+			crntStruct->jsd = sqrt(0.5);
 			continue;
 		}
 
