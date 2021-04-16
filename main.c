@@ -291,6 +291,7 @@ void* fileHandler(void* args){
     fqueue* fileQueue = tArgs->fileQueue;
     dqueue* dirQueue = tArgs->dirQueue;
     fileStruct* fileHead = tArgs->fileHead;
+    int* numFiles = tArgs->numFiles;
 
     //while loop keeps trying to dequeue from file queue
     //repeat until the queue is empty and the directory threads have stopped
@@ -327,6 +328,9 @@ void* fileHandler(void* args){
         file->next = NULL;
         file->words = malloc(sizeof (wordMap));
         file->words->word = NULL; //initialize word
+
+	//increment file counter
+	(*numFiles)++;
 
         pthread_mutex_unlock(&tArgs->lock);
 
@@ -415,19 +419,16 @@ void* dirHandler(void* args){
 
 //init jsd struct array with all file pairs
 void initPairs(fileStruct* f, struct jsdStruct** array){
-	struct fileStruct* crnt = f;
+	struct fileStruct* crnt = f->next;
 	int count = 0;
 	while(crnt != NULL){
 		struct fileStruct* tmp = crnt->next;
 		while(tmp != NULL){
-			//create jsd struct
-			struct jsdStruct* newStruct = malloc(sizeof(jsdStruct));
-			newStruct->file1 = crnt;
-			newStruct->file2 = tmp;
-			//newStruct->count = 0;
-            newStruct->combined = 0;
-			newStruct->jsd = 0;
-			array[count] = newStruct;
+			array[count] = malloc(sizeof(struct jsdStruct));
+			array[count]->file1 = crnt;
+			array[count]->file2 = tmp;
+            		array[count]->combined = 0;
+			array[count]->jsd = 0; 
 			count++;
 			tmp = tmp->next;
 		}
@@ -514,12 +515,16 @@ int main(int argc, char** argv){
     //dInit(dirQueue,dirThreads,dirThreads+1);
     dInit(dirQueue,dirThreads,dirThreads);
     fInit(fileQueue,fileThreads);
+    
+    //init file counter
+    int a = 0;
 
      //struct that contains both queues
     threadArgs* tArgs = malloc(sizeof (threadArgs));
     tArgs->dirQueue = dirQueue;
     tArgs->fileQueue = fileQueue;
     tArgs->suffix = fileSuffix;
+    tArgs->numFiles = &a;
     pthread_mutex_init(&tArgs->lock, NULL);
 
     //Creates the head of the fileStruct (dummyHead) set to null
@@ -582,6 +587,19 @@ int main(int argc, char** argv){
     free(dirQueue);
     free(fileQueue);
     
+	//allocate pair array
+	int pairNum = (1/2)*(*tArgs->numFiles)*((*tArgs->numFiles)+1);
+	struct jsdStruct** result = malloc(sizeof(struct jsdStruct*) * pairNum);
+	result[0] = malloc(sizeof(struct jsdStruct));
+	result[0]->jsd = 0;
+	//initialize pair array
+	initPairs(fileHead, result);
+
+	//test to make sure working
+	printf("%d\n", pairNum);
+	for(int i=0; i<pairNum; i++){
+		printf("%s %s\n", result[i]->file1->fileName, result[i]->file2->fileName);
+	}
 
     //test printing output
     fileStruct* filePrint = fileHead->next;
@@ -609,6 +627,7 @@ int main(int argc, char** argv){
         filePtr = filePtr->next;
         free(tempFile);
     }
+
 
     //free thread arguments
     free(fTids);

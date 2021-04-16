@@ -15,12 +15,12 @@ typedef struct fileStruct{
 } fileStruct;
 
 //struct to hold file pairs
-typedef struct jsdStruct{
+struct jsdStruct{
 	struct fileStruct* file1;
 	struct fileStruct* file2;
 	double jsd;
 	int combined;
-} jsdStruct;
+};
 
 //Arguments for file for threads
 typedef struct fileArgs{
@@ -34,6 +34,7 @@ typedef struct threadArgs{
     struct fileStruct* fileHead; //head of all files
     pthread_mutex_t lock;
     char* suffix;
+    int* numFiles;
 } threadArgs;
 
 
