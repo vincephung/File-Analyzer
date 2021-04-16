@@ -51,7 +51,6 @@ void* fileHandler(void* args);
 void* dirHandler(void* args);
 int getFileSize(int fd);
 void insertWord(char* word, fileStruct* fileStruct);
-int getNumWords(char* fileName, fileStruct* fileStruct);
 int isFile(char *name);
 int isDir(char *name);
 void initWFD(struct fileStruct*);
