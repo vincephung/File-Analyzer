@@ -415,13 +415,13 @@ int cmpfunc (const void * a, const void * b){
 	struct jsdStruct* aStruct = *(struct jsdStruct**)a;
 	struct jsdStruct* bStruct = *(struct jsdStruct**)b;
 	if(aStruct->combined < bStruct->combined){
-		return -1;
+		return 1;
 	}
 	else if(aStruct->combined == bStruct->combined){
 		return 0;
 	}
 	else{
-		return 1;
+		return -1;
 	}
 }
 
