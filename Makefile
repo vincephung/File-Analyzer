@@ -4,12 +4,6 @@ compare: compare.o dqueue.o fqueue.o
 compare.o: compare.c compare.h
 	gcc -c -g -std=gnu99 -Wvla -Wall -fsanitize=address,undefined compare.c -pthread
 
-test: test.o  dqueue.o
-	gcc -g -std=gnu99 -Wvla -Wall -fsanitize=address,undefined -o test test.o dqueue.o -pthread
-
-test.o: test.c dqueue.h
-	gcc -c -g -std=gnu99 -Wvla -Wall -fsanitize=address,undefined test.c -pthread
-
 dqueue.o: dqueue.c dqueue.h
 	gcc -c -g -std=gnu99 -Wvla -Wall -fsanitize=address,undefined dqueue.c -pthread
 
