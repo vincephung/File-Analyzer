@@ -9,17 +9,13 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <math.h>
-#include "main.h"
+#include "compare.h"
 #include "dqueue.h"
 #include "fqueue.h"
 
 
 //add running word count to method and return
-/*
-Given a file descriptor, tokenize the file by
-reading the file and determing what words it contains
-A word is defined by a sequence of characters including: letters,numbers and dash(hypen)
-*/
+//Gets a file struct, reads the file separates the words
 void tokenize(fileStruct* file){
     int fd = open(file->fileName,O_RDONLY);
     int fileSize = getFileSize(fd);
@@ -436,7 +432,6 @@ void initPairs(fileStruct* f, struct jsdStruct** array){
 	}
 }
 
-
 int main(int argc, char** argv){
     //Parameters initialized with default values
     int dirThreads = 1;
@@ -450,69 +445,80 @@ int main(int argc, char** argv){
     for(int i = 1; i < argc; i++){
         //handle optional argument
         if(argv[i][0] == '-'){
-            if(strlen(argv[i])!= 3 && argv[i][1] != 's'){
-                fprintf(stderr,"Missing or invalid argument\n");
+            //get the second part of the parameter ex. -dN (get the N part)
+            int wordIndex = 0; //index of the new string
+            char* argRemainder = malloc(strlen(argv[i])+1);
+            
+            //Get the string from user input, ex. "-stest" puts string "test" into tempSuffix
+            for(int j = 2; j < strlen(argv[i]); j++){
+                argRemainder[wordIndex] = argv[i][j];
+                wordIndex++;
+            }
+            argRemainder[wordIndex] = '\0';
+            
+            //handles missing arguments for threads
+            if(strlen(argRemainder) == 0 && argv[i][1] != 's'){
+                fprintf(stderr,"Error: Invalid or missing argument\n");
+                free(argRemainder);
                 free(fileSuffix);
                 return EXIT_FAILURE;
-                //halt
             }
 
             //argument type must be positive number for threads
-            if((argv[i][2]-'0') <= 0 && argv[i][1] != 's'){
-                fprintf(stderr,"Threads must be a positive integer\n");
-                free(fileSuffix);
-                return EXIT_FAILURE;
-                //halt
-            }
-
-            if(argv[i][1] == 'd'){
-                dirThreads = argv[i][2] - '0'; //convert char to integer
-            }else if(argv[i][1] == 'f'){
-                fileThreads = argv[i][2] - '0';
-            }else if(argv[i][1] == 'a'){
-                aThreads = argv[i][2] - '0';
-            }else if(argv[i][1] == 's'){
-                //any string after "s" will be the suffix
-                //if it is null, then it is the empty string
-                int wordIndex = 0; //index of the new string
-                char* tempSuffix = malloc(strlen(argv[i])+1);
-                
-                //Get the string from user input, ex. "-stest" puts string "test" into tempSuffix
-                for(int j = 2; j < strlen(argv[i]); j++){
-                    tempSuffix[wordIndex] = argv[i][j];
-                    wordIndex++;
+            if(argv[i][1] != 's'){
+                int nonDigit = 0;
+                for(int i = 0; i < strlen(argRemainder);i++){
+                    if(!isdigit(argRemainder[i])){
+                        nonDigit = 1;
+                        break;
+                    }
                 }
-                tempSuffix[wordIndex] = '\0';
-
-                //Copy tempSuffix into fileSuffix
+                //if arg is not a digit or is not positive
+                if(nonDigit || atoi(argRemainder) <= 0){
+                    fprintf(stderr,"Error: threads must be a positive integer\n");
+                    free(fileSuffix);
+                    free(argRemainder);
+                    return EXIT_FAILURE;
+                }
+            }
+        
+            if(argv[i][1] == 'd'){
+                dirThreads = atoi(argRemainder); //convert char to integer
+            }else if(argv[i][1] == 'f'){
+                fileThreads = atoi(argRemainder);
+            }else if(argv[i][1] == 'a'){
+                aThreads = atoi(argRemainder);
+            }else if(argv[i][1] == 's'){
+                //Copy argRemainder into fileSuffix
+                //if it is null, then it is the empty string
                 memset(fileSuffix, '\0', strlen(fileSuffix));
                 for(int j = 0; j < wordIndex; j++){
                     if(suffixSize == j){
                         fileSuffix = (char*) realloc(fileSuffix,suffixSize*2);
-                        strcpy(fileSuffix,tempSuffix);
+                        strcpy(fileSuffix,argRemainder);
                     }
-                    fileSuffix[j] = tempSuffix[j];
-                }     
-                free(tempSuffix);                
+                    fileSuffix[j] = argRemainder[j];
+                }             
+            }else{
+                //"Not one of the optional argument types" ex "-x or -z"
+                fprintf(stderr,"Error: Missing or invalid argument\n");
+                free(fileSuffix);
+                free(argRemainder);
+                return EXIT_FAILURE;
             }
-        }else{
-            //only get optional arguments at first
-            continue;
+            free(argRemainder);
         }
     }
     
-    //testing input
-    printf("dir threads: %d\n",dirThreads);
-    printf("file threads: %d\n",fileThreads);
-    printf("analysis threads: %d\n",aThreads);
-    printf("suffix is: %s\n", fileSuffix);
-
     //create and initialize queues
     dqueue* dirQueue = malloc(sizeof(dqueue));
     fqueue* fileQueue = malloc(sizeof(fqueue));
 
-   //Consider "main" as a directory thread because it is adding from the argument list.
-    //dInit(dirQueue,dirThreads,dirThreads+1);
+/*
+   Consider "main" as a directory thread because it is adding from the argument list.
+    dInit(dirQueue,dirThreads,dirThreads+1);
+*/
+
     dInit(dirQueue,dirThreads,dirThreads);
     fInit(fileQueue,fileThreads);
     
@@ -554,6 +560,7 @@ int main(int argc, char** argv){
 
     //start directory threads
     pthread_t* dTids = malloc(sizeof(pthread_t) * dirThreads);
+
     for(int i = 0; i < dirThreads; i++){
         int err;
         err = pthread_create(&dTids[i],NULL,dirHandler,(void*)tArgs);
@@ -600,6 +607,12 @@ int main(int argc, char** argv){
 	for(int i=0; i<pairNum; i++){
 		printf("%s %s\n", result[i]->file1->fileName, result[i]->file2->fileName);
 	}
+
+    //testing input
+    printf("dir threads: %d\n",dirThreads);
+    printf("file threads: %d\n",fileThreads);
+    printf("analysis threads: %d\n",aThreads);
+    printf("suffix is: %s\n", fileSuffix);
 
     //test printing output
     fileStruct* filePrint = fileHead->next;

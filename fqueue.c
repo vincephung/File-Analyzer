@@ -83,7 +83,7 @@ char* fDequeue(fqueue *Q)
 	free(Q->data[Q->head]);
 	--Q->count;
 	++Q->head;
-	//if (Q->head == 256) Q->head = 0;
+	
 	if (Q->head == Q->capacity) Q->head = 0;
 	
 	pthread_cond_signal(&Q->write_ready);
