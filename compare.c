@@ -13,11 +13,14 @@
 #include "dqueue.h"
 #include "fqueue.h"
 
-
 //add running word count to method and return
 //Gets a file struct, reads the file separates the words
 void tokenize(fileStruct* file){
     int fd = open(file->fileName,O_RDONLY);
+    if(fd == -1){
+        perror(file->fileName);
+        return;
+    }
     int fileSize = getFileSize(fd);
 
     //char buf[fileSize];
@@ -285,11 +288,7 @@ void* fileHandler(void* args){
     fileStruct* fileHead = tArgs->fileHead;
     int* numFiles = tArgs->numFiles;
 
-    //while loop keeps trying to dequeue from file queue
-    //repeat until the queue is empty and the directory threads have stopped
-    //might be && not ||
-    //while(fileQueue->count != 0 || dirQueue->active != 0){
-    
+    //repeat until the queue is empty and the directory threads have stopped    
     do{
         char* fileName = fDequeue(fileQueue);
 
@@ -513,12 +512,6 @@ int main(int argc, char** argv){
     //create and initialize queues
     dqueue* dirQueue = malloc(sizeof(dqueue));
     fqueue* fileQueue = malloc(sizeof(fqueue));
-
-/*
-   Consider "main" as a directory thread because it is adding from the argument list.
-    dInit(dirQueue,dirThreads,dirThreads+1);
-*/
-
     dInit(dirQueue,dirThreads,dirThreads);
     fInit(fileQueue,fileThreads);
     
@@ -560,7 +553,6 @@ int main(int argc, char** argv){
 
     //start directory threads
     pthread_t* dTids = malloc(sizeof(pthread_t) * dirThreads);
-
     for(int i = 0; i < dirThreads; i++){
         int err;
         err = pthread_create(&dTids[i],NULL,dirHandler,(void*)tArgs);
@@ -569,9 +561,6 @@ int main(int argc, char** argv){
             perror("pthread_create");
         }
     }
-
-    //Once main thread adds all argument directories, remove it from the active thread list
-    //dirQueue->active--;
 
     //join directory threads
     for(int i = 0; i < dirThreads; i++){
