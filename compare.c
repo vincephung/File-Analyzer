@@ -168,23 +168,26 @@ double compute_kld(double wfd, double mean){
 }
 
 //calculates the JSD for a specified portion of the WFD//
-void* analysisPhase(struct jsdStruct** array, int start, int end){
+void* analysisPhase(void* args){
+	struct aArgs* a = (struct aArgs*)args; 
+	struct jsdStruct** array = a->array;
+	int start = a->start;
+	int end = a->end;
 	//iterate through array
 	for(int i=start; i<end; i++){
-		double kld = 0;
+		double kld1 = 0;
+		double kld2 = 0;
 		struct jsdStruct* crntStruct = array[i];
 		struct wordMap* word1 = crntStruct->file1->words;
 		struct wordMap* word2 = crntStruct->file2->words;
-		while(word1 != NULL || word2 != NULL){
+		while(word1 != NULL && word2 != NULL){
 			//compare words to see if same
 			if(strcmp(word1->word, word2->word) == 0){
 				//compute mean
 				double mean = .5 * (word1->wfd + word2->wfd);
 				//compute kld for each file
-				double kld1 = compute_kld(word1->wfd, mean);
-				double kld2 = compute_kld(word2->wfd, mean);
-				//add to running total
-				kld += (kld1 + kld2);
+				kld1 += compute_kld(word1->wfd, mean);
+				kld2 += compute_kld(word2->wfd, mean);
 				//increment same word count
 				crntStruct->combined++;
 				//increment both words
@@ -196,9 +199,7 @@ void* analysisPhase(struct jsdStruct** array, int start, int end){
 				//compute mean
 				double mean = .5 * word1->wfd;
 				//compute kld1 since kld2 will be 0
-				double kld1 = compute_kld(word1->wfd, mean);
-				//add to running total
-				kld += kld1;
+				kld1 += compute_kld(word1->wfd, mean);
 				//increment word1 only
 				word1 = word1->next;
 			}
@@ -207,9 +208,7 @@ void* analysisPhase(struct jsdStruct** array, int start, int end){
 				//compute mean
 				double mean = .5 * word2->wfd;
 				//compute kld2 since kld1 will be 0
-				double kld2 = compute_kld(word2->wfd, mean);
-				//add to running total
-				kld += kld2;
+				kld2 += compute_kld(word2->wfd, mean);
 				//increment word2 only
 				word2 = word2->next;
 			}
@@ -217,26 +216,23 @@ void* analysisPhase(struct jsdStruct** array, int start, int end){
 		//check to see if files aren't same size
 		struct wordMap* crnt;
 		if(word1 == NULL && word2 != NULL){
-			crnt = word2;
+			//compute mean
+			double mean = .5 * word2->wfd;
+			//compute kld2
+			kld2 += compute_kld(word2->wfd, mean);
+			//increment word2 only
+			word2 = word2->next;
 		}
 		else if(word1 != NULL && word2 == NULL){
-			crnt = word1;
-		}
-		else{
-			crnt = NULL;
-		}
-		while(crnt != NULL){
 			//compute mean
-			double mean = .5 * crnt->wfd;
-			//compute kld1
-			double kld1 = compute_kld(crnt->wfd, mean);
-			//add to running total
-			kld += kld1;
-			//increment word1 only
-			crnt = crnt->next;
+			double mean = .5 * word1->wfd;
+			//compute kld2
+			kld1 += compute_kld(word1->wfd, mean);
+			//increment word2 only
+			word1 = word1->next;
 		}
 		//compute jsd
-		double jsd = sqrt((1/2)*kld);
+		double jsd = sqrt(.5 * kld1  + .5 * kld2);
 		crntStruct->jsd = jsd;
 	}
 
@@ -333,7 +329,7 @@ void* fileHandler(void* args){
         //tokenize words in the file
         tokenize(file);        
         initWFD(file);
-        free(fileName);
+       // free(fileName);
     }while(fileQueue->count != 0 || dirQueue->active != 0);
 
     return 0;
@@ -430,6 +426,10 @@ void initPairs(fileStruct* f, struct jsdStruct** array){
 		}
 		crnt = crnt->next;
 	}
+}
+
+int cmpfunc (const void * a, const void * b){
+	return ((struct jsdStruct*)a)->combined - ((struct jsdStruct*)b)->combined;
 }
 
 int main(int argc, char** argv){
@@ -595,17 +595,55 @@ int main(int argc, char** argv){
     free(fileQueue);
     
 	//allocate pair array
-	int pairNum = (1/2)*(*tArgs->numFiles)*((*tArgs->numFiles)+1);
+	int numFiles = *tArgs->numFiles;
+	int pairNum = .5 * (numFiles) * (numFiles-1);
 	struct jsdStruct** result = malloc(sizeof(struct jsdStruct*) * pairNum);
-	result[0] = malloc(sizeof(struct jsdStruct));
-	result[0]->jsd = 0;
 	//initialize pair array
 	initPairs(fileHead, result);
 
+	//divide work based on number of threads
+	int perThread = pairNum / aThreads;
+
+	//start analysis threads
+    	pthread_t* aTids = malloc(sizeof(pthread_t) * aThreads);
+	int index = 0;
+/*	 struct aArgs* args = malloc(sizeof(struct aArgs));
+	args->array = result;
+	args->start = index;
+	index += perThread;
+	args->end = index;
+
+	*analysisPhase((void*)args);*/
+	for(int i=0; i<aThreads; i++){
+	        struct aArgs* args = malloc(sizeof(struct aArgs));
+		args->array = result;
+		args->start = index;
+		index += perThread;
+		args->end = index; 
+		int err;
+       		err = pthread_create(&aTids[i],NULL,analysisPhase,(void*)args);
+        	if(err != 0){
+            		// errno = err;
+            		perror("pthread_create");
+       		 }
+	}
+
+	//join analysis threads
+    	for(int i = 0; i < aThreads; i++){
+        	pthread_join(aTids[i],NULL);        
+   	 }
+
+	//sort the results
+	qsort(result, pairNum, sizeof(struct jsdStruct*), cmpfunc);
+
+	//print results
+	for(int i=0; i<pairNum; i++){
+		printf("%s %s %d %f\n", result[i]->file1->fileName, result[i]->file2->fileName, result[i]->combined, result[i]->jsd);
+	}
 	//test to make sure working
 	printf("%d\n", pairNum);
 	for(int i=0; i<pairNum; i++){
-		printf("%s %s\n", result[i]->file1->fileName, result[i]->file2->fileName);
+		printf("%s %s %f % d\n", result[i]->file1->fileName, result[i]->file2->fileName, result[i]->jsd, result[i]->combined);
 	}
 
     //testing input

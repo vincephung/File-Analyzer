@@ -22,6 +22,13 @@ struct jsdStruct{
 	int combined;
 };
 
+//struct to hold args for analysis threads
+struct aArgs{
+	struct jsdStruct** array;
+	int start;
+	int end;
+};
+
 //Arguments for file for threads
 typedef struct fileArgs{
     struct fileStruct* file; //First file in the WFD struct
@@ -49,5 +56,5 @@ int isFile(char *name);
 int isDir(char *name);
 void initWFD(struct fileStruct*);
 double compute_kld(double wfd, double mean);
-void* analysisPhase(struct jsdStruct** array, int start, int end);
+void* analysisPhase(void*);
 void initPairs(fileStruct* f, struct jsdStruct** array);
